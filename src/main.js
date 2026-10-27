@@ -4,11 +4,30 @@
   const BY = window.BY, TR = window.BY_TRACK, ART = window.BY_ART, RD = window.BY_RENDER, AU = window.BY_AUDIO, END = window.BY_ENDINGS, BOT = window.BY_BOT;
   const canvas = document.getElementById('oyun');
   const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
   const W = 384, H = 216;
   const params = new URLSearchParams(location.search);
   if (params.has('tv')) document.body.classList.add('tv');
   const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+
+  // ---------- çözünürlük ----------
+  // Oyun 384×216 birimlik bir ekranda düşünülür; kanvas ekranın gerçek piksel sayısında çizilir.
+  // S (birim başına piksel) 1/8'lik adımlara yuvarlanır: kanvas boyu tam sayı olur, önbellekli
+  // katmanlar yeniden örneklenmeden 1:1 kopyalanır.
+  // Ölçek en çok 3; yarış sırasında kareler yavaş kalırsa (zayıf cihaz) kendiliğinden düşer.
+  let S = 3, maxS = 3;
+  function fit() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const ideal = Math.max(1, Math.min(maxS, ((r.width || W * 3) * dpr) / W));
+    const s = Math.max(1, Math.floor(ideal * 8) / 8);
+    const w = Math.round(W * s), h = Math.round(H * s);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    S = s;
+    ART.setScale(S);
+  }
+  fit();
+  addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(canvas);
 
   // ---------- kayıt ----------
   const store = {
@@ -21,33 +40,35 @@
   const saveSettings = () => store.set('by-ayar', settings);
 
   // ---------- yazı ----------
+  // Fredoka: yuvarlak hatlı, Türkçe harflerin hepsi düzgün (OFL lisanslı).
+  const FONT = ART.FONT;
   if (window.FontFace && document.fonts) {
-    for (const [file, range] of [
+    const loads = [];
+    for (const wt of [500, 600]) for (const [file, range] of [
       ['latin', 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215'],
       ['latin-ext', 'U+0100-0130, U+0132-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF'],
     ]) {
-      new FontFace('Press Start 2P', `url(src/fonts/press-start-2p-${file}-400-normal.woff2)`, { unicodeRange: range })
-        .load().then((f) => document.fonts.add(f)).catch(() => { /* monospace'e düşer */ });
+      loads.push(new FontFace('Fredoka', `url(src/fonts/fredoka-${file}-${wt}-normal.woff2)`, { weight: String(wt), unicodeRange: range })
+        .load().then((f) => document.fonts.add(f)).catch(() => { /* sistem yazı tipine düşer */ }));
     }
+    // yazı tipi gelince yazı içeren önbellekli çizimleri (levhalar, plakalar) yenile
+    Promise.all(loads).then(() => ART.clearAll());
   }
-  // Yazı tipinin büyük İ, Ö, Ü harfleri küçük harf gibi durduğu için I, O, U yazılıp noktalar elle konur.
-  const DOTS = { 'İ': ['I', [3]], 'Ö': ['O', [1, 5]], 'Ü': ['U', [1, 5]] };
-  function text(s, x, y, col = '#f4f0e4', size = 8, align = 'left', shadow = '#10121c') {
+  // y: yazının üst kenarı; size: göz yüksekliği (eski 8'lik ölçüyle uyumlu)
+  function text(s, x, y, col = '#fff8ec', size = 8, align = 'left', shadow = '#1a1430', weight = 600) {
     s = String(s);
-    ctx.font = `${size}px "Press Start 2P", monospace`;
-    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-    const chars = [...s];
-    const plain = chars.map((c) => (DOTS[c] ? DOTS[c][0] : c)).join('');
-    const u = size / 8, sh = size >= 16 ? 2 : 1;
-    const x0 = Math.round(x - (align === 'center' ? (chars.length * size) / 2 : align === 'right' ? chars.length * size : 0));
-    const y0 = Math.round(y);
-    const draw = (ox, oy, c) => {
-      ctx.fillStyle = c; ctx.fillText(plain, x0 + ox, y0 + oy);
-      chars.forEach((ch, i) => { if (DOTS[ch]) for (const dx of DOTS[ch][1]) ctx.fillRect(x0 + i * size + dx * u + ox, y0 - 2 * u + oy, 2 * u, u); });
-    };
-    if (shadow) draw(sh, sh, shadow);
-    draw(0, 0, col);
+    const px = size * 1.32;
+    ctx.font = `${weight} ${px}px ${FONT}`;
+    ctx.textAlign = align; ctx.textBaseline = 'middle';
+    const yy = y + size * 0.5;
+    if (shadow) { ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.6, px * 0.24); ctx.strokeStyle = shadow; ctx.strokeText(s, x, yy); }
+    ctx.fillStyle = col; ctx.fillText(s, x, yy);
   }
+  function panel(x, y, w, h, r = 6, fill = 'rgba(22,18,48,0.7)', stroke = 'rgba(255,255,255,0.16)') {
+    ART.rr(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill();
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 0.8; ctx.stroke(); }
+  }
+  function tri(x, y, s, dir, col) { ART.poly(ctx, [x + dir * s, y, x - dir * s * 0.7, y - s, x - dir * s * 0.7, y + s], col, null); }
   const up = (s) => s.toLocaleUpperCase('tr-TR');
 
   // ---------- giriş ----------
@@ -217,7 +238,7 @@
     screen: 'title', menu: 0, menuItems: [], t: 0, G: null, demo: null, demoT: 0,
     endT: 0, overT: 0, banner: null, radioShow: 0, scores: store.get('by-rekorlar', []), name: ['A', 'A', 'A'], nameIdx: 0, lastStage: -1,
   };
-  window.__by = { app, BY, start: () => startRace() };
+  window.__by = { app, BY, start: () => startRace(), render: () => render() };
 
   function newDemo() {
     const choices = [Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0];
@@ -322,11 +343,13 @@
 
   // ---------- döngü ----------
   const DT = 1 / 60;
-  let acc = 0, lastT = performance.now();
+  let acc = 0, lastT = performance.now(), slowT = 0;
   function frame(now) {
     let dt = Math.max(0, (now - lastT) / 1000); lastT = now;
     if (dt > 0.1) dt = 0.1;
     app.t += dt;
+    if (app.screen === 'race' && dt > 0.026) slowT += dt; else slowT = Math.max(0, slowT - dt * 0.5);
+    if (slowT > 2 && S > 1.5) { maxS = Math.max(1.5, S - 0.5); slowT = 0; fit(); }
     readPad();
     update(dt);
     render();
@@ -370,196 +393,258 @@
   }
 
   // ---------- çizim ----------
-  function menu(items, y0, sel, gap) {
-    gap = gap || 14;
+  function menu(items, y0, sel, gap, w) {
+    gap = gap || 15; w = w || 220;
     app.menuItems = [];
+    const x0 = W / 2 - w / 2;
+    panel(x0, y0 - 7, w, items.length * gap + 5, 9);
     items.forEach((it, i) => {
-      const y = y0 + i * gap;
-      const on = i === sel;
+      const y = y0 + i * gap, on = i === sel;
       const label = typeof it === 'string' ? it : it.label;
-      if (on) { ctx.fillStyle = 'rgba(16,18,28,0.7)'; ctx.fillRect(W / 2 - 110, y - 3, 220, 13); }
-      const shown = on && it.adjust ? '◀ ' + label + ' ▶' : label;
-      text(shown, W / 2, y, on ? '#f4c531' : '#f4f0e4', 8, 'center');
+      if (on) {
+        ART.rr(ctx, x0 + 4, y - 4.5, w - 8, gap - 1.5, 6.5); ctx.fillStyle = '#f4c531'; ctx.fill();
+        if (it.adjust) { tri(x0 + 13, y + 2.8, 3.4, -1, '#2a1a10'); tri(x0 + w - 13, y + 2.8, 3.4, 1, '#2a1a10'); }
+        else tri(x0 + 13, y + 2.8, 3.4, 1, '#2a1a10');
+      }
+      text(label, W / 2, y - 0.4, on ? '#2a1a10' : '#fff8ec', 7.2, 'center', on ? null : '#1a1430');
       app.menuItems.push({ y, adjust: !!(it && it.adjust) });
     });
   }
   function routeMap(G, x, y) {
     // 1-2-3-4 yol ağı, gidilen yol sarı
+    ctx.lineWidth = 1; ctx.lineCap = 'round';
+    for (let L = 0; L < 3; L++) {
+      const n = TR.LAYERS[L].length;
+      for (let j = 0; j < n; j++) {
+        const idx = TR.LAYERS[L][j], cx = x + (j - (n - 1) / 2) * 10, cy = y + L * 7;
+        for (const [d, nidx] of [[0, TR.LAYERS[L + 1][j]], [1, TR.LAYERS[L + 1][j + 1]]]) {
+          const nx = x + (j + d - n / 2) * 10;
+          const on = G.route.includes(idx) && G.route.includes(nidx);
+          ctx.strokeStyle = on ? '#f4c531' : 'rgba(255,255,255,0.22)';
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, cy + 7); ctx.stroke();
+        }
+      }
+    }
     for (let L = 0; L < 4; L++) {
       const n = TR.LAYERS[L].length;
       for (let j = 0; j < n; j++) {
         const idx = TR.LAYERS[L][j];
-        const cx = x + (j - (n - 1) / 2) * 10, cy = y + L * 8;
+        const cx = x + (j - (n - 1) / 2) * 10, cy = y + L * 7;
         const on = G.route.includes(idx), cur = G.route[G.cur] === idx;
-        ctx.fillStyle = cur ? (Math.floor(app.t * 4) % 2 ? '#ffffff' : '#f4c531') : on ? '#f4c531' : 'rgba(255,255,255,0.35)';
-        ctx.fillRect(Math.round(cx) - 2, cy - 2, 4, 4);
+        ART.circ(ctx, cx, cy, cur ? 2.6 : 2, cur ? (Math.floor(app.t * 4) % 2 ? '#ffffff' : '#f4c531') : on ? '#f4c531' : 'rgba(255,255,255,0.35)', null);
       }
     }
   }
   function hud(G) {
-    // üst şerit
-    ctx.fillStyle = 'rgba(16,18,28,0.55)'; ctx.fillRect(0, 0, W, 26);
-    text('SKOR', 6, 4, '#9af4e4');
-    text(String(G.score).padStart(7, '0'), 6, 14);
+    // skor
+    panel(4, 4, 78, 26, 8);
+    text('SKOR', 12, 7.5, '#9af4e4', 5.4, 'left', null);
+    text(String(G.score).padStart(7, '0'), 12, 16.5, '#fff8ec', 8, 'left', null);
+    // süre
     const tm = Math.ceil(G.time);
     const low = G.time < 10 && G.phase !== 'goal';
-    text('SÜRE', W / 2, 2, '#9af4e4', 8, 'center');
-    text(String(Math.max(0, tm)).padStart(2, '0'), W / 2, 11, low && Math.floor(app.t * 4) % 2 ? '#ff5a4a' : '#f4c531', 16, 'center');
-    const st = BY.curStage(G), S = TR.STAGES[st.idx];
-    text(`ETAP ${S.layer + 1}`, W - 64, 4, '#9af4e4');
-    routeMap(G, W - 22, 4);
-    // ilerleme çubuğu
+    panel(W / 2 - 32, 3, 64, 33, 10, low ? 'rgba(90,16,24,0.78)' : 'rgba(22,18,48,0.72)');
+    text('SÜRE', W / 2, 6, '#9af4e4', 5.4, 'center', null);
+    text(String(Math.max(0, tm)).padStart(2, '0'), W / 2, 14.5, low && Math.floor(app.t * 4) % 2 ? '#ff6a5a' : '#f4c531', 14, 'center', '#1a1430');
+    // etap, rota haritası, ilerleme
+    const st = BY.curStage(G), S2 = TR.STAGES[st.idx];
+    panel(W - 96, 4, 92, 33, 8);
+    text(`ETAP ${S2.layer + 1}`, W - 88, 7.5, '#9af4e4', 5.6, 'left', null);
     const pi = Math.floor((G.pos + BY.PLAYER_Z) / BY.SEG);
     const prog = Math.max(0, Math.min(1, (pi - st.start) / (st.end - st.start)));
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(W - 64, 16, 40, 3);
-    ctx.fillStyle = '#f4c531'; ctx.fillRect(W - 64, 16, Math.round(40 * prog), 3);
-    // hız
+    ART.rr(ctx, W - 88, 18, 44, 4, 2); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+    if (prog > 0.02) { ART.rr(ctx, W - 88, 18, 44 * prog, 4, 2); ctx.fillStyle = '#f4c531'; ctx.fill(); }
+    text(S2.short, W - 88, 25, '#fff8ec', 5, 'left', null, 500);
+    routeMap(G, W - 22, 10);
+    // hız göstergesi
     const kmh = BY.kmh(G);
-    ctx.fillStyle = 'rgba(16,18,28,0.55)'; ctx.fillRect(4, H - 28, 92, 24);
-    text(String(kmh).padStart(3, ' '), 10, H - 24, '#ffffff', 16);
-    text('KM/SA', 62, H - 16, '#9af4e4');
+    panel(4, H - 34, 104, 30, 9);
+    text(String(kmh), 44, H - 31, '#ffffff', 13, 'right', null);
+    text('km/sa', 48, H - 25.5, '#9af4e4', 5.6, 'left', null, 500);
     const bars = Math.round(kmh / 290 * 14);
-    for (let i = 0; i < 14; i++) { ctx.fillStyle = i < bars ? (i > 10 ? '#ff5a4a' : i > 7 ? '#f4c531' : '#7cff6a') : 'rgba(255,255,255,0.15)'; ctx.fillRect(10 + i * 6, H - 7, 4, 2); }
-    if (app.radioShow > 0 || G.t < 6) text('♪ ' + radioName(), W - 6, H - 12, '#f4f0e4', 8, 'right');
+    for (let i = 0; i < 14; i++) {
+      ART.rr(ctx, 11 + i * 6.4, H - 12, 4.4, 4, 1.4);
+      ctx.fillStyle = i < bars ? (i > 10 ? '#ff5a4a' : i > 7 ? '#f4c531' : '#7cff6a') : 'rgba(255,255,255,0.16)'; ctx.fill();
+    }
+    if (app.radioShow > 0 || G.t < 6) {
+      const s = '♪ ' + radioName();
+      ctx.font = `600 ${7 * 1.32}px ${FONT}`;
+      const w = ctx.measureText(s).width + 14;
+      panel(W - 4 - w, H - 20, w, 15, 7.5);
+      text(s, W - 4 - w / 2, H - 16.5, '#fff8ec', 7, 'center', null);
+    }
     // ortadaki duyurular
     if (G.phase === 'count') {
       const n = Math.ceil(G.countT);
-      if (n <= 3 && n >= 1) text(String(n), W / 2, 70, '#ffffff', 32, 'center');
-      // başlangıç ışıkları
-      for (let i = 0; i < 3; i++) { ART.disc(ctx, W / 2 - 24 + i * 24, 52, 7, '#141018'); ART.disc(ctx, W / 2 - 24 + i * 24, 52, 5, 3 - n > i ? '#ff4a3a' : '#3a2a2a'); }
+      panel(W / 2 - 46, 44, 92, 22, 11, 'rgba(16,14,24,0.85)');
+      for (let i = 0; i < 3; i++) {
+        const on = 3 - n > i, cx = W / 2 - 26 + i * 26;
+        if (on) { const gl = ctx.createRadialGradient(cx, 55, 2, cx, 55, 14); gl.addColorStop(0, 'rgba(255,80,60,0.7)'); gl.addColorStop(1, 'rgba(255,80,60,0)'); ctx.fillStyle = gl; ctx.fillRect(cx - 14, 41, 28, 28); }
+        ART.circ(ctx, cx, 55, 7, on ? '#ff4a3a' : '#3a2a2e', ART.K, 1);
+        if (on) ART.circ(ctx, cx - 2, 53, 2, 'rgba(255,255,255,0.6)', null);
+      }
+      if (n <= 3 && n >= 1) text(String(n), W / 2, 74, '#ffffff', 30, 'center');
     } else if (G.t < 4.2 && G.phase === 'race' && G.cur === 0) {
-      if (G.t < 4.2 && Math.floor(app.t * 6) % 2) text('BAŞLA!', W / 2, 96, '#7cff6a', 16, 'center');
+      if (Math.floor(app.t * 6) % 2) text('BAŞLA!', W / 2, 92, '#7cff6a', 18, 'center');
     }
     if (G.extendShow > 0) {
-      text('SÜRE UZATILDI', W / 2, 44, '#ffffff', 8, 'center');
-      text('+' + G.lastExtend, W / 2, 56, '#7cff6a', 16, 'center');
+      panel(W / 2 - 60, 44, 120, 38, 10);
+      text('SÜRE UZATILDI', W / 2, 48, '#ffffff', 7, 'center', null);
+      text('+' + G.lastExtend, W / 2, 59, '#7cff6a', 15, 'center');
     }
     if (app.banner && G.extendShow <= 0 && G.phase === 'race') {
-      ctx.fillStyle = 'rgba(16,18,28,0.6)'; ctx.fillRect(0, 40, W, 30);
-      text(app.banner.a, W / 2, 44, '#f4c531', 8, 'center');
-      text(app.banner.b, W / 2, 56, '#ffffff', 8, 'center');
+      panel(W / 2 - 110, 42, 220, 32, 10);
+      text(app.banner.a, W / 2, 46, '#f4c531', 7, 'center', null);
+      text(app.banner.b, W / 2, 58, '#ffffff', 9, 'center', null);
     }
     const pz = G.pos + BY.PLAYER_Z, pi2 = Math.floor(pz / BY.SEG);
     if (st.forkStart >= 0 && pi2 > st.forkStart - 260 && G.lockSide === null && G.phase === 'race') {
       const nx = TR.nextStages(st.idx);
       if (Math.floor(app.t * 3) % 2 || pi2 > st.forkStart) {
-        text('YOL AYRIMI', W / 2, 34, '#f4c531', 8, 'center');
-        text('◀ ' + TR.STAGES[nx[0]].short, W / 2 - 8, 46, '#ffffff', 8, 'right');
-        text(TR.STAGES[nx[1]].short + ' ▶', W / 2 + 8, 46, '#ffffff', 8, 'left');
+        panel(W / 2 - 100, 40, 200, 30, 10, 'rgba(22,18,48,0.78)');
+        text('YOL AYRIMI', W / 2, 43.5, '#f4c531', 7, 'center', null);
+        tri(W / 2 - 92, 61, 3.6, -1, '#9af4e4'); text(TR.STAGES[nx[0]].short, W / 2 - 86, 56.5, '#ffffff', 7.6, 'left', null);
+        tri(W / 2 + 92, 61, 3.6, 1, '#9af4e4'); text(TR.STAGES[nx[1]].short, W / 2 + 86, 56.5, '#ffffff', 7.6, 'right', null);
       }
     }
     if (G.phase === 'timeup') {
-      ctx.fillStyle = 'rgba(16,18,28,0.6)'; ctx.fillRect(0, 70, W, 36);
-      text('SÜRE BİTTİ', W / 2, 78, '#ff5a4a', 16, 'center');
+      panel(W / 2 - 90, 70, 180, 34, 12, 'rgba(60,12,20,0.82)');
+      text('SÜRE BİTTİ', W / 2, 77, '#ff6a5a', 16, 'center');
     }
     if (G.ev.some((e) => e.e === 'saved')) app.savedT = 2;
-    if (app.savedT > 0) { app.savedT -= 1 / 60; text('SON ANDA!', W / 2, 90, '#7cff6a', 16, 'center'); }
+    if (app.savedT > 0) { app.savedT -= 1 / 60; text('SON ANDA!', W / 2, 92, '#7cff6a', 16, 'center'); }
     if (G.phase === 'goal') {
-      ctx.fillStyle = 'rgba(16,18,28,0.6)'; ctx.fillRect(0, 64, W, 50);
-      text('BİTİŞ!', W / 2, 70, '#f4c531', 16, 'center');
-      text('SÜRE BONUSU +' + G.bonus, W / 2, 94, '#ffffff', 8, 'center');
+      panel(W / 2 - 100, 64, 200, 50, 12);
+      text('BİTİŞ!', W / 2, 69, '#f4c531', 18, 'center');
+      text('SÜRE BONUSU +' + G.bonus, W / 2, 97, '#ffffff', 7.4, 'center', null);
     }
   }
 
+  function logo(cx, y) {
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    ctx.font = `600 38px ${FONT}`;
+    ctx.strokeStyle = '#1e1438'; ctx.lineWidth = 8; ctx.strokeText('BOĞAZ YOLU', cx, y + 2);
+    ctx.lineWidth = 7; ctx.strokeText('BOĞAZ YOLU', cx, y);
+    ctx.fillStyle = ART.lgrad(ctx, 0, y - 28, 0, y, [[0, '#fff2a0'], [0.5, '#ffc93a'], [1, '#ff8a2a']]); ctx.fillText('BOĞAZ YOLU', cx, y);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.rect(0, y - 30, W, 8); ctx.clip(); ctx.fillText('BOĞAZ YOLU', cx, y);
+    ctx.restore();
+    // turkuaz kurdele
+    const ry = y + 6, rw = 176;
+    ART.poly(ctx, [cx - rw / 2 - 10, ry + 2, cx - rw / 2 + 2, ry + 2, cx - rw / 2 + 2, ry + 14, cx - rw / 2 - 10, ry + 14, cx - rw / 2 - 6, ry + 8], '#127068', '#1e1438', 0.9);
+    ART.poly(ctx, [cx + rw / 2 + 10, ry + 2, cx + rw / 2 - 2, ry + 2, cx + rw / 2 - 2, ry + 14, cx + rw / 2 + 10, ry + 14, cx + rw / 2 + 6, ry + 8], '#127068', '#1e1438', 0.9);
+    ART.box(ctx, cx - rw / 2, ry, rw, 13, 2, '#1fa39a', '#1e1438', 0.9);
+    text('SAHİL YOLUNDA SÜREYE KARŞI', cx, ry + 2.8, '#ffffff', 7, 'center', null);
+  }
   function drawTitle() {
     const G = app.demo;
     RD.render(ctx, G, { color: 'kirmizi' });
-    ctx.fillStyle = 'rgba(16,18,28,0.6)'; ctx.fillRect(0, 14, W, 50);
-    text('BOĞAZ YOLU', W / 2, 20, '#f4c531', 24, 'center', '#7a3a10');
-    text('SAHİL YOLUNDA SÜREYE KARŞI', W / 2, 50, '#9af4e4', 8, 'center');
+    ctx.fillStyle = ART.lgrad(ctx, 0, 0, 0, 80, [[0, 'rgba(16,14,40,0.55)'], [1, 'rgba(16,14,40,0)']]); ctx.fillRect(0, 0, W, 80);
+    logo(W / 2, 40);
     const items = titleItems();
     app.menu = Math.min(app.menu, items.length - 1);
-    ctx.fillStyle = 'rgba(16,18,28,0.45)'; ctx.fillRect(W / 2 - 116, 72, 232, items.length * 14 + 8);
-    menu(items, 77, app.menu);
+    menu(items, 74, app.menu, 14.5, 210);
     // seçilen arabanın önizlemesi
-    const img = ART.player(0, false, settings.color);
-    if (app.menu === 2) ctx.drawImage(img, W - img.width - 6, H - img.height - 22);
-    if (app.scores.length) text('REKOR ' + app.scores[0].n + ' ' + app.scores[0].s, W / 2, H - 12, '#ffffff', 8, 'center');
+    if (app.menu === 2) {
+      const img = ART.player(0, false, settings.color);
+      panel(W - img.lw - 14, H - img.lh - 30, img.lw + 10, img.lh + 10, 8);
+      ctx.drawImage(img, W - img.lw - 9, H - img.lh - 25, img.lw, img.lh);
+    }
+    if (app.scores.length) { const s = 'REKOR ' + app.scores[0].n + ' ' + app.scores[0].s; panel(W / 2 - 52, H - 17, 104, 13, 6.5); text(s, W / 2, H - 14.6, '#ffe08a', 6.2, 'center', null); }
   }
+  function screenDim(a) { ctx.fillStyle = `rgba(14,12,34,${a})`; ctx.fillRect(0, 0, W, H); }
   function drawHelp() {
     RD.render(ctx, app.demo, { color: 'kirmizi' });
-    ctx.fillStyle = 'rgba(10,12,20,0.85)'; ctx.fillRect(12, 8, W - 24, H - 16);
-    text('NASIL OYNANIR', W / 2, 16, '#f4c531', 8, 'center');
-    const lines = [
-      ['Süre bitmeden Boğaz boyunca sür!', '#f4f0e4'],
-      ['Her kontrol noktası süre ekler.', '#f4f0e4'],
-      ['Yol ayrımında sol RUMELİ, sağ', '#f4f0e4'],
-      ['ANADOLU ya da KÖPRÜ: 4 farklı son.', '#f4f0e4'],
-      ['', ''],
-      ['← →        direksiyon', '#9af4e4'],
-      ['↑ / Z      gaz', '#9af4e4'],
-      ['↓ / X      fren', '#9af4e4'],
-      ['R radyo   P duraklat   M ses', '#9af4e4'],
-      ['', ''],
-      ['Trafiğe hızla çarpma, yol', '#f4f0e4'],
-      ['kenarındaki ağaç ve direklere', '#f4f0e4'],
-      ['dikkat et. Virajda hız kes!', '#f4f0e4'],
-    ];
-    lines.forEach(([s, c], i) => text(s, 28, 32 + i * 12, c));
-    if (Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 22, '#f4c531', 8, 'center');
+    screenDim(0.55);
+    panel(14, 8, W - 28, H - 16, 12, 'rgba(18,16,42,0.86)');
+    text('NASIL OYNANIR', W / 2, 15, '#f4c531', 10, 'center');
+    const story = ['Süre bitmeden Boğaz boyunca sür! Her kontrol noktası süre ekler.', 'Yol ayrımında sol RUMELİ, sağ ANADOLU ya da KÖPRÜ: 4 farklı son.'];
+    story.forEach((s, i) => text(s, W / 2, 34 + i * 11, '#fff8ec', 6.4, 'center', null, 500));
+    const keys = [['← →', 'direksiyon'], ['↑ / Z', 'gaz'], ['↓ / X', 'fren'], ['R', 'radyo kanalı'], ['P', 'duraklat'], ['M', 'ses']];
+    keys.forEach(([k, s], i) => {
+      const cx = i < 3 ? 70 : 230, y = 64 + (i % 3) * 15;
+      ART.rr(ctx, cx - 40, y - 2, 40, 12, 4); ctx.fillStyle = 'rgba(154,244,228,0.14)'; ctx.fill();
+      text(k, cx - 20, y, '#9af4e4', 6.6, 'center', null);
+      text(s, cx + 6, y, '#fff8ec', 6.6, 'left', null, 500);
+    });
+    const tips = ['Trafiğe hızla arkadan çarpma: kaza yaparsın.', 'Yol kenarındaki ağaç, direk ve binalara dikkat et.', 'Sert virajlarda hız kes, yoksa dışa savrulursun.'];
+    tips.forEach((s, i) => text(s, W / 2, 120 + i * 12, '#d8dcec', 6.4, 'center', null, 500));
+    const A = ART;
+    const sample = [[A.car('taksi', 0, 40 * S), 40], [A.car('dolmus', 0, 40 * S), 40], [A.car('otobus', 0, 48 * S), 48], [A.car('motor', 0, 16 * S), 16]];
+    let x = W / 2 - 80;
+    for (const [img, w] of sample) { const h = w * img.lh / img.lw; ctx.drawImage(img, x, 192 - h, w, h); x += w + 12; }
+    if (Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 22, '#f4c531', 6.6, 'center');
     app.menuItems = [];
   }
   function drawEnding() {
     const G = app.G;
     const img = END.scene(G.ending, ART.CAR_COLORS[settings.color][0]);
-    ctx.drawImage(img, 0, 0);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(img, 0, 0); ctx.restore();
     const E = TR.ENDINGS[G.ending];
     const a = Math.min(1, app.endT / 1.5);
     ctx.globalAlpha = a;
-    ctx.fillStyle = 'rgba(10,12,20,0.6)'; ctx.fillRect(0, 6, W, 58);
-    text(E.title, W / 2, 12, '#f4c531', 16, 'center');
-    E.text.forEach((s, i) => text(s, W / 2, 32 + i * 10, '#ffffff', 8, 'center'));
+    panel(W / 2 - 120, 6, 240, 62, 12, 'rgba(18,14,40,0.62)');
+    text(E.title, W / 2, 12, '#f4c531', 14, 'center');
+    E.text.forEach((s, i) => text(s, W / 2, 34 + i * 10, '#ffffff', 6.8, 'center', null, 500));
     ctx.globalAlpha = 1;
     if (app.endT > 1.5) {
-      const ph = 18 + G.lapTimes.length * 10 + 24, py = H - ph - 20;
-      ctx.fillStyle = 'rgba(10,12,20,0.6)'; ctx.fillRect(W - 150, py, 144, ph);
-      text('ETAP SÜRELERİ', W - 78, py + 4, '#9af4e4', 8, 'center');
-      G.lapTimes.forEach((t, i) => text(`${i + 1}. ${t.toFixed(1)} SN`, W - 140, py + 18 + i * 10, '#ffffff'));
-      text('SKOR ' + G.score, W - 140, py + 22 + G.lapTimes.length * 10, '#f4c531');
+      const ph = 22 + G.lapTimes.length * 11 + 14, px = W - 128, py = H - ph - 22;
+      panel(px, py, 120, ph, 10, 'rgba(18,14,40,0.72)');
+      text('ETAP SÜRELERİ', px + 60, py + 6, '#9af4e4', 6.4, 'center', null);
+      G.lapTimes.forEach((t, i) => { text(`${i + 1}. etap`, px + 12, py + 19 + i * 11, '#d8dcec', 6.4, 'left', null, 500); text(`${t.toFixed(1)} sn`, px + 108, py + 19 + i * 11, '#ffffff', 6.4, 'right', null); });
+      text('SKOR ' + G.score, px + 60, py + 21 + G.lapTimes.length * 11, '#f4c531', 7.4, 'center', null);
     }
-    if (app.endT > 2.5 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 12, '#f4c531', 8, 'center');
+    if (app.endT > 2.5 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 14, '#f4c531', 6.6, 'center');
     app.menuItems = [];
   }
   function drawOver() {
     RD.render(ctx, app.G, { color: settings.color });
-    ctx.fillStyle = 'rgba(10,12,20,0.7)'; ctx.fillRect(0, 50, W, 90);
-    text('SÜRE BİTTİ', W / 2, 60, '#ff5a4a', 16, 'center');
-    const G = app.G, S = TR.STAGES[G.route[G.cur]];
-    text(`${S.layer + 1}. ETAPTA KALDIN: ${up(S.short)}`, W / 2, 86, '#ffffff', 8, 'center');
-    text('SKOR ' + G.score, W / 2, 100, '#f4c531', 8, 'center');
-    if (app.overT > 2 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, 122, '#f4c531', 8, 'center');
+    screenDim(0.45);
+    panel(W / 2 - 120, 48, 240, 96, 14, 'rgba(30,12,30,0.82)');
+    text('SÜRE BİTTİ', W / 2, 58, '#ff6a5a', 18, 'center');
+    const G = app.G, S2 = TR.STAGES[G.route[G.cur]];
+    text(`${S2.layer + 1}. etapta kaldın: ${S2.name}`, W / 2, 90, '#ffffff', 6.8, 'center', null, 500);
+    text('SKOR ' + G.score, W / 2, 104, '#f4c531', 8, 'center', null);
+    if (app.overT > 2 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, 126, '#f4c531', 6.6, 'center');
     app.menuItems = [];
   }
   function drawName() {
-    ctx.fillStyle = '#10121c'; ctx.fillRect(0, 0, W, H);
-    text('YENİ REKOR!', W / 2, 30, '#f4c531', 16, 'center');
-    text('SKOR ' + app.G.score, W / 2, 56, '#ffffff', 8, 'center');
-    text('ADINI YAZ', W / 2, 80, '#9af4e4', 8, 'center');
+    ctx.fillStyle = ART.lgrad(ctx, 0, 0, 0, H, [[0, '#2a2460'], [1, '#10121c']]); ctx.fillRect(0, 0, W, H);
+    text('YENİ REKOR!', W / 2, 26, '#f4c531', 18, 'center');
+    text('SKOR ' + app.G.score, W / 2, 56, '#ffffff', 8, 'center', null);
+    text('ADINI YAZ', W / 2, 78, '#9af4e4', 7, 'center', null);
     for (let i = 0; i < 3; i++) {
-      const x = W / 2 - 36 + i * 36;
-      ctx.fillStyle = i === app.nameIdx ? '#f4c531' : '#3a4058'; ctx.fillRect(x - 12, 96, 24, 30);
-      ctx.fillStyle = '#10121c'; ctx.fillRect(x - 10, 98, 20, 26);
-      text(app.name[i], x, 102, i === app.nameIdx ? '#f4c531' : '#ffffff', 16, 'center');
+      const x = W / 2 - 40 + i * 40, on = i === app.nameIdx;
+      ART.box(ctx, x - 15, 92, 30, 36, 8, on ? '#f4c531' : '#2e3460', on ? '#ffffff' : 'rgba(255,255,255,0.2)', 1.2);
+      text(app.name[i], x, 101, on ? '#2a1a10' : '#ffffff', 16, 'center', null);
+      if (on) { ART.poly(ctx, [x - 4, 88, x + 4, 88, x, 84], '#f4c531', null); ART.poly(ctx, [x - 4, 132, x + 4, 132, x, 136], '#f4c531', null); }
     }
-    text('↑↓ HARF   Z ONAY', W / 2, 146, '#9aa0b4', 8, 'center');
+    text('↑↓ harf   Z onay', W / 2, 148, '#aab0c8', 6.6, 'center', null, 500);
     app.menuItems = [];
   }
   function drawScores() {
     RD.render(ctx, app.demo, { color: 'kirmizi' });
-    ctx.fillStyle = 'rgba(10,12,20,0.82)'; ctx.fillRect(40, 16, W - 80, H - 32);
-    text('REKORLAR', W / 2, 26, '#f4c531', 16, 'center');
-    if (!app.scores.length) text('HENÜZ REKOR YOK', W / 2, 90, '#ffffff', 8, 'center');
+    screenDim(0.45);
+    panel(40, 12, W - 80, H - 24, 12, 'rgba(18,16,42,0.88)');
+    text('REKORLAR', W / 2, 20, '#f4c531', 14, 'center');
+    if (!app.scores.length) text('Henüz rekor yok', W / 2, 96, '#ffffff', 8, 'center', null, 500);
     app.scores.forEach((e, i) => {
-      const col = app.newEntry && e === app.newEntry && Math.floor(app.t * 4) % 2 ? '#f4c531' : '#ffffff';
-      const end = e.e ? TR.ENDINGS[e.e].title : e.r;
-      text(`${i + 1}. ${e.n}  ${String(e.s).padStart(7, ' ')}`, 60, 54 + i * 22, col);
-      text(end, 84, 64 + i * 22, '#9af4e4');
+      const y = 48 + i * 25, mine = app.newEntry && e === app.newEntry;
+      if (mine) { ART.rr(ctx, 52, y - 4, W - 104, 23, 6); ctx.fillStyle = Math.floor(app.t * 4) % 2 ? 'rgba(244,197,49,0.22)' : 'rgba(244,197,49,0.1)'; ctx.fill(); }
+      ART.circ(ctx, 66, y + 6, 6.4, i === 0 ? '#f4c531' : i === 1 ? '#c8ccd8' : i === 2 ? '#d08a4a' : '#2e3460', null);
+      text(String(i + 1), 66, y + 2.6, i < 3 ? '#2a1a10' : '#ffffff', 6.6, 'center', null);
+      text(e.n, 80, y - 0.5, '#ffffff', 8, 'left', null);
+      text(String(e.s), W - 60, y - 0.5, '#f4c531', 8, 'right', null);
+      text(e.e ? TR.ENDINGS[e.e].title : e.r, 80, y + 10.5, '#9af4e4', 5.8, 'left', null, 500);
     });
-    if (app.endT > 1 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 28, '#f4c531', 8, 'center');
+    if (app.endT > 1 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 26, '#f4c531', 6.6, 'center');
     app.menuItems = [];
   }
   function render() {
-    ctx.imageSmoothingEnabled = false;
+    ctx.setTransform(S, 0, 0, S, 0, 0);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'low';
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     if (!['title', 'pause'].includes(app.screen)) app.menuItems = [];
     switch (app.screen) {
       case 'title': drawTitle(); break;
@@ -567,9 +652,9 @@
       case 'race': RD.render(ctx, app.G, { brake: app.lastInput && app.lastInput.brake, color: settings.color }); hud(app.G); break;
       case 'pause':
         RD.render(ctx, app.G, { color: settings.color }); hud(app.G);
-        ctx.fillStyle = 'rgba(10,12,20,0.7)'; ctx.fillRect(0, 0, W, H);
-        text('DURAKLATILDI', W / 2, 60, '#f4c531', 8, 'center');
-        menu(['DEVAM', 'YENİDEN BAŞLA', 'ANA MENÜ'], 86, app.menu);
+        screenDim(0.6);
+        text('DURAKLATILDI', W / 2, 60, '#f4c531', 12, 'center');
+        menu(['DEVAM', 'YENİDEN BAŞLA', 'ANA MENÜ'], 92, app.menu);
         break;
       case 'ending': drawEnding(); break;
       case 'over': drawOver(); break;

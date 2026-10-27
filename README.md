@@ -8,6 +8,10 @@ seçersin. Süre bitmeden kontrol noktalarına yetişip dört farklı sondan bir
 
 Düz HTML, CSS ve JavaScript. Bütün çizimler, müzikler ve pistler bu proje için yapıldı.
 
+Çizimler çizgi film tarzında ve vektördür; oyun ekranın gerçek çözünürlüğünde çizilir, telefonda da büyük
+ekranda da pürüzsüz görünür. Yol boyunca camiler, yalılar, Rumelihisarı, Kız Kulesi, Beylerbeyi Sarayı,
+vapurlar, simitçiler, çay bahçeleri ve iki Boğaz köprüsü var.
+
 ## Rota
 
 Her oyunda 4 etap sürersin; yol ayrımlarında sola dönersen Rumeli, sağa dönersen Anadolu yakasına (ya da köprüye) gidersin.
@@ -70,7 +74,8 @@ node tests/core.test.js     # pist, fizik, çarpışma, süre ve bir botla 8 rot
   Çizimden bağımsızdır, testler Node'da çalıştırır.
 - `src/bot.js`: başlık ekranındaki gösteri sürüşü; testlerde süre dengesini ölçer.
 - `src/render.js`: sözde-3D yol çizici (segment izdüşümü, sis, nesne ölçekleme).
-- `src/art.js`, `src/endings.js`: kodla çizilmiş piksel çizimler, gün saatine göre renkler, bitiş sahneleri.
+- `src/art.js`, `src/endings.js`: vektör çizimler (her nesne ekrandaki boyutuna göre kademeli önbelleğe alınır),
+  gün saatine göre renkler, bitiş sahneleri.
 - `src/audio.js`: motor sesi, efektler ve üç radyo kanalının özgün müzikleri.
 - `src/main.js`: ekranlar, HUD, giriş (klavye, dokunmatik, eğme, oyun kolu), rekorlar.
 - `src/remote.js`, `kumanda.html`: telefon direksiyonu.
@@ -80,5 +85,5 @@ Her `main` gönderiminde GitHub Actions testleri çalıştırır ve siteyi GitHu
 
 ## Lisans
 
-Kod MIT lisanslıdır (`LICENSE`). Press Start 2P yazı tipi SIL Open Font License ile gelir
-(`src/fonts/OFL-press-start-2p.txt`). PeerJS ve qrcode-generator MIT lisanslıdır.
+Kod MIT lisanslıdır (`LICENSE`). Fredoka yazı tipi SIL Open Font License ile gelir
+(`src/fonts/OFL-fredoka.txt`). PeerJS ve qrcode-generator MIT lisanslıdır.
