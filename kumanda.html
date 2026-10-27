@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#10121c">
+<title>Boğaz Yolu direksiyon</title>
+<style>
+  :root { --gece: #10121c; --metin: #ece6d6; --soluk: #9aa0b4; --sari: #f4c531; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--gece); color: var(--metin); font: 15px system-ui, sans-serif; overflow: hidden;
+    overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .sayfa { height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 10px; }
+  header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .durum { display: flex; align-items: center; gap: 8px; color: var(--soluk); margin-right: auto; }
+  .durum::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #5b6478; flex: none; }
+  .durum.bagli { color: var(--metin); }
+  .durum.bagli::before { background: #3ad13a; box-shadow: 0 0 8px #3ad13a; }
+  .durum.hata { color: #ff9d85; } .durum.hata::before { background: #c4302a; }
+  header button { font: inherit; font-size: 14px; color: var(--metin); background: #222638; border: 1px solid #3a4058; border-radius: 8px;
+    padding: 8px 12px; min-height: 40px; touch-action: manipulation; }
+  header button[aria-pressed="true"] { border-color: var(--sari); color: var(--sari); }
+
+  .kol { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; justify-items: center; gap: 10px; min-height: 0; }
+  .pedal { touch-action: none; border-radius: 22px; font: 700 20px system-ui, sans-serif; color: #fff; width: 100%; height: min(70vh, 260px); max-width: 220px; }
+  #fren { background: #7a2a2a; border: 4px solid #c84e3e; }
+  #gaz { background: #1f7a4a; border: 4px solid #2fb36e; }
+  .pedal.basili { filter: brightness(0.8); transform: translateY(3px); }
+  .orta { display: grid; justify-items: center; gap: 8px; }
+  #teker { width: min(30vw, 46vh, 170px); aspect-ratio: 1; border-radius: 50%; border: 12px solid #3a4058; position: relative; transition: transform 60ms linear; }
+  #teker::before { content: ''; position: absolute; left: 50%; top: 50%; width: 70%; height: 12px; background: #3a4058; transform: translate(-50%, -50%); border-radius: 6px; }
+  #teker::after { content: ''; position: absolute; left: 50%; top: -12px; width: 10px; height: 18px; background: var(--sari); transform: translateX(-50%); border-radius: 3px; }
+  .tuslar { display: none; gap: 10px; }
+  .tuslar button { touch-action: none; width: min(16vw, 80px); height: min(16vw, 80px); border-radius: 14px; font-size: 26px; color: #e8ecf6; background: #262b40; border: 2px solid #454c6c; }
+  .tuslar button.basili { border-color: var(--sari); }
+  body.tusmod .tuslar { display: flex; } body.tusmod #teker { display: none; }
+  .ipucu { text-align: center; color: var(--soluk); font-size: 13px; min-height: 1.3em; max-width: 260px; }
+  .gezin { display: flex; gap: 6px; }
+  .gezin button { font: inherit; color: var(--metin); background: #222638; border: 1px solid #3a4058; border-radius: 8px; width: 46px; height: 40px; touch-action: manipulation; }
+
+  #giris { display: grid; align-content: center; gap: 14px; text-align: center; padding: 0 8px; }
+  #giris[hidden], #kumanda[hidden] { display: none; }
+  #giris h1 { margin: 0; font-size: 21px; font-weight: 600; color: var(--sari); }
+  #giris p { margin: 0; color: var(--soluk); line-height: 1.6; }
+  #kod { font: 30px ui-monospace, monospace; letter-spacing: 0.25em; text-align: center; text-transform: uppercase; width: 100%; padding: 12px 8px;
+    background: #070810; color: var(--sari); border: 1px solid #454c6c; border-radius: 8px; }
+  #baglan { font: 600 18px system-ui, sans-serif; padding: 12px; color: #1d1600; background: var(--sari); border: 0; border-radius: 8px; }
+  #kumanda { display: contents; }
+  #cevir { display: none; position: fixed; inset: 0; background: var(--gece); z-index: 5; place-items: center; text-align: center; padding: 24px; color: var(--soluk); line-height: 1.6; }
+  @media (orientation: portrait) { body.bagli #cevir { display: grid; } }
+</style>
+</head>
+<body>
+<div class="sayfa">
+  <header>
+    <div class="durum" id="durum" role="status">Bağlanıyor…</div>
+    <button id="mod" type="button" aria-pressed="false">Tuşlarla sür</button>
+    <button id="duraklat" type="button">Duraklat</button>
+    <button id="menu" type="button">Menü</button>
+  </header>
+
+  <form id="giris" hidden>
+    <h1>Telefonu direksiyon yap</h1>
+    <p>Bilgisayarda ya da TV'de Boğaz Yolu'nu aç, <b>Telefonla oyna</b>'ya bas (K). QR kodu okut ya da 6 karakterlik kodu yaz.</p>
+    <input id="kod" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Bağlantı kodu" placeholder="······">
+    <button id="baglan" type="submit">Bağlan</button>
+  </form>
+
+  <div id="kumanda" hidden>
+    <div class="kol">
+      <button id="fren" class="pedal" type="button">FREN</button>
+      <div class="orta">
+        <div id="teker" aria-hidden="true"></div>
+        <div class="tuslar"><button id="sol" type="button" aria-label="Sola">◀</button><button id="sag" type="button" aria-label="Sağa">▶</button></div>
+        <div class="ipucu" id="ipucu">Telefonu yan tut, direksiyon gibi çevir.</div>
+        <div class="gezin"><button id="yukari" type="button" aria-label="Menüde yukarı">▲</button><button id="asagi" type="button" aria-label="Menüde aşağı">▼</button></div>
+      </div>
+      <button id="gaz" class="pedal" type="button">GAZ</button>
+    </div>
+  </div>
+</div>
+<div id="cevir">Telefonu yan çevir:<br>direksiyon yatay tutunca çalışır.</div>
+
+<script src="src/vendor/peerjs.min.js"></script>
+<script>
+// Boğaz Yolu — telefon direksiyonu. Ekran tarafı ve mesaj biçimi: src/remote.js
+(function () {
+  'use strict';
+  const PREFIX = 'bogazyolu-';
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('durum'), hint = $('ipucu'), wheel = $('teker');
+  const params = new URLSearchParams(location.search);
+  function peerOptions() {
+    const p = params.get('peer');
+    if (!p) return { debug: 0 };
+    const [host, port] = p.split(':');
+    const local = /^(localhost|127\.|192\.168\.|10\.)/.test(host);
+    return { debug: 1, host, port: +port || (local ? 9000 : 443), path: '/', secure: !local };
+  }
+  const setStatus = (t, k) => { statusEl.textContent = t; statusEl.className = 'durum' + (k ? ' ' + k : ''); };
+  const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) { /* yok say */ } };
+
+  // ---------- kod ----------
+  const clean = (s) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  let code = clean(decodeURIComponent(location.hash.slice(1)));
+  $('giris').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const c = clean($('kod').value);
+    if (c.length !== 6) { setStatus('Kod 6 karakter olmalı.', 'hata'); return; }
+    code = c; history.replaceState(null, '', '#' + code); begin();
+  });
+  $('kod').addEventListener('input', (e) => { e.target.value = clean(e.target.value); });
+
+  // ---------- bağlantı ----------
+  let peer = null, conn = null, retryTimer = null, openTimer = null;
+  function begin() {
+    $('giris').hidden = true; $('kumanda').hidden = false;
+    document.body.classList.add('bagli');
+    setStatus('Bağlanıyor…');
+    startTilt();
+    if (!peer || peer.destroyed) {
+      peer = new window.Peer(undefined, peerOptions());
+      peer.on('open', connect);
+      peer.on('disconnected', () => setTimeout(() => { if (!peer.destroyed && peer.disconnected) peer.reconnect(); }, 1500));
+      peer.on('error', (err) => {
+        if (err.type === 'peer-unavailable') { dropPending(); setStatus('Oyun bulunamadı. Oyunda kumanda paneli açık mı?', 'hata'); retry(3000); }
+        else if (err.type === 'browser-incompatible') setStatus('Bu tarayıcı WebRTC desteklemiyor.', 'hata');
+        else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type)) { setStatus('Sunucuya ulaşılamadı. Tekrar deneniyor…', 'hata'); retry(4000); }
+      });
+    } else if (peer.open) connect();
+  }
+  function retry(ms) {
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => { if (!peer || peer.destroyed) { begin(); return; } if (peer.disconnected) { peer.reconnect(); return; } connect(); }, ms);
+  }
+  function dropPending() {
+    clearTimeout(openTimer);
+    const c = conn; if (!c || c.open) return;
+    conn = null; c._yeni = false; try { c.close(); } catch (e) { /* yok say */ }
+  }
+  function connect() {
+    if (conn && (conn.open || conn._yeni)) return;
+    clearTimeout(retryTimer);
+    const c = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
+    c._yeni = true; conn = c;
+    clearTimeout(openTimer);
+    openTimer = setTimeout(() => { if (conn === c && !c.open) { dropPending(); retry(500); } }, 10000);
+    c.on('open', () => { c._yeni = false; clearTimeout(openTimer); setStatus('Bağlandı', 'bagli'); c.send({ t: 'h' }); sent = ''; sendWheel(true); buzz(30); keepAwake(); });
+    c.on('data', onData);
+    c.on('close', () => { if (conn !== c) return; conn = null; setStatus('Bağlantı koptu, yeniden bağlanıyor…', 'hata'); retry(2000); });
+    c.on('error', () => { /* close ayrıca gelir */ });
+  }
+  const send = (m) => { if (conn && conn.open) conn.send(m); };
+  setInterval(() => send({ t: 'p' }), 1000); // nabız: oyun kopmayı böyle anlar
+  window.addEventListener('pagehide', () => { send({ t: 'bye' }); try { conn && conn.close(); } catch (e) { /* yok say */ } });
+
+  // ---------- oyundan gelenler ----------
+  function onData(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'v') { buzz(m.p || 60); return; }
+    if (m.t !== 's') return;
+    const race = m.screen === 'race';
+    hint.textContent = m.paused ? 'Duraklatıldı: ▲▼ ile seç, GAZ ile onayla'
+      : !race ? 'Menü: ▲▼ ile seç, GAZ ile onayla'
+      : keyMode ? `${m.kmh} km/sa · süre ${m.time}` : `${m.kmh} km/sa · süre ${m.time} · telefonu çevir`;
+    $('duraklat').textContent = m.paused ? 'Devam' : 'Duraklat';
+  }
+
+  // ---------- direksiyon ----------
+  let steer = 0, gas = 0, brake = 0, keyMode = false, tiltSeen = false;
+  const keys = { sol: false, sag: false };
+  let sent = '';
+  function sendWheel(force) {
+    const s = keyMode ? (keys.sag ? 1 : 0) - (keys.sol ? 1 : 0) : steer;
+    const m = { t: 'w', s: Math.round(s * 100) / 100, g: gas, b: brake };
+    const k = JSON.stringify(m);
+    if (force || k !== sent) { sent = k; send(m); }
+    wheel.style.transform = `rotate(${s * 90}deg)`;
+  }
+  setInterval(() => sendWheel(false), 33);
+  function onTilt(e) {
+    if (e.beta === null) return;
+    tiltSeen = true;
+    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    let v = ang === 90 ? e.beta : ang === -90 || ang === 270 ? -e.beta : e.gamma;
+    steer = Math.max(-1, Math.min(1, v / 30));
+    if (Math.abs(steer) < 0.05) steer = 0;
+  }
+  async function startTilt() {
+    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try { if (await DeviceOrientationEvent.requestPermission() !== 'granted') { setKeyMode(true); return; } } catch (e) { /* ilk dokunuşta yeniden denenir */ }
+    }
+    addEventListener('deviceorientation', onTilt);
+    setTimeout(() => { if (!tiltSeen) setKeyMode(true); }, 1500);
+  }
+  function setKeyMode(on) {
+    keyMode = on;
+    document.body.classList.toggle('tusmod', on);
+    $('mod').setAttribute('aria-pressed', String(on));
+    $('mod').textContent = on ? 'Eğerek sür' : 'Tuşlarla sür';
+  }
+  $('mod').addEventListener('click', () => { if (keyMode) { setKeyMode(false); startTilt(); } else setKeyMode(true); });
+
+  // ---------- pedallar ve tuşlar ----------
+  function hold(btn, on, off) {
+    let p = null;
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (p !== null) return; p = e.pointerId; try { btn.setPointerCapture(p); } catch (err) { /* yok say */ } btn.classList.add('basili'); on(); buzz(10); keepAwake(); });
+    const end = (e) => { if (e.pointerId !== p) return; p = null; btn.classList.remove('basili'); off(); };
+    btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.addEventListener('lostpointercapture', end);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  hold($('gaz'), () => { gas = 1; sendWheel(); }, () => { gas = 0; sendWheel(); });
+  hold($('fren'), () => { brake = 1; sendWheel(); }, () => { brake = 0; sendWheel(); });
+  hold($('sol'), () => { keys.sol = true; sendWheel(); send({ t: 'b', b: 'left' }); }, () => { keys.sol = false; sendWheel(); });
+  hold($('sag'), () => { keys.sag = true; sendWheel(); send({ t: 'b', b: 'right' }); }, () => { keys.sag = false; sendWheel(); });
+  $('yukari').addEventListener('click', () => send({ t: 'b', b: 'up' }));
+  $('asagi').addEventListener('click', () => send({ t: 'b', b: 'down' }));
+  $('duraklat').addEventListener('click', () => send({ t: 'b', b: 'pause' }));
+  $('menu').addEventListener('click', () => send({ t: 'b', b: 'back' }));
+  function releaseAll() { gas = 0; brake = 0; keys.sol = keys.sag = false; sendWheel(true); }
+  window.addEventListener('blur', releaseAll);
+
+  // ---------- ekran açık kalsın ----------
+  let wakeLock = null;
+  async function keepAwake() {
+    if (wakeLock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+    try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch (e) { /* yok say */ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') { releaseAll(); return; }
+    keepAwake(); if (code && !(conn && conn.open)) retry(200);
+  });
+
+  if (!window.Peer) { setStatus('Kumanda dosyası yüklenemedi. Sayfayı yenile.', 'hata'); return; }
+  if (code.length === 6) begin(); else { $('giris').hidden = false; setStatus('Kod bekleniyor'); }
+})();
+</script>
+</body>
+</html>
