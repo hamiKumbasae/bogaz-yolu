@@ -1,5 +1,6 @@
-# Testleri çalıştırır ve oyunu GitHub Pages'te yayınlar:
+# Testleri çalıştırır ve oyunları GitHub Pages'te yayınlar:
 # https://hamikumbasae.github.io/bogaz-yolu/
+# https://hamikumbasae.github.io/bogaz-yolu/turbo/  (İstanbul Turbo)
 name: Pages
 
 on:
@@ -33,6 +34,9 @@ jobs:
         run: |
           mkdir _site
           cp -r index.html kumanda.html src _site/
+          mkdir -p _site/turbo/data
+          cp -r turbo/index.html turbo/src turbo/vendor _site/turbo/
+          cp turbo/data/istanbul.json turbo/data/height.bin _site/turbo/data/
       - uses: actions/configure-pages@v5
         with:
           enablement: true

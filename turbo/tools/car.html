@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#888}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.js", "three/addons/": "../vendor/three/addons/" } }</script></head>
+<body><canvas id="c"></canvas><script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { makeSportsCar, trafficModels, Fleet, makeFerry } from '../src/vehicles.js';
+const W = 1200, H = 700;
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true;
+const s = new THREE.Scene(); s.background = new THREE.Color(0x9aa4ad);
+const pm = new THREE.PMREMGenerator(r); s.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(5, 10, 6); sun.castShadow = true; s.add(sun);
+const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI/2), new THREE.MeshStandardMaterial({ color: 0x55585c })); g.receiveShadow = true; s.add(g);
+const car = makeSportsCar(0xc81d25); s.add(car.root);
+const models = trafficModels();
+models.forEach((m, i) => {
+  const grp = new THREE.Group();
+  const mats = { paint: new THREE.MeshStandardMaterial({ color: m.colors[0], metalness: 0.4, roughness: 0.35 }), glass: new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.1 }), dark: new THREE.MeshStandardMaterial({ color: 0x151515 }), head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff }), tail: new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000 }), sign: new THREE.MeshStandardMaterial({ color: 0xffd23a, emissive: 0xffd23a }) };
+  for (const k of Object.keys(m.g)) grp.add(new THREE.Mesh(m.g[k], mats[k]));
+  grp.position.set(-8 + (i % 4) * 0, 0, 0);
+  grp.position.set(-6 - Math.floor(i / 4) * 14, 0, -9 + (i % 4) * 4.5);
+  s.add(grp);
+});
+const cam = new THREE.PerspectiveCamera(35, W / H, 0.1, 500);
+window.view = (x, y, z, lx = 0, ly = 0.6, lz = 0) => { cam.position.set(x, y, z); cam.lookAt(lx, ly, lz); r.render(s, cam); };
+window.ready = true;
+</script></body></html>

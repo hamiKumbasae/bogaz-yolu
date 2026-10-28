@@ -10,6 +10,9 @@
 
 **Oyna:** https://hamikumbasae.github.io/bogaz-yolu/
 
+**Yeni oyun: İstanbul Turbo.** Gerçek İstanbul haritası üzerinde 3D yarış: https://hamikumbasae.github.io/bogaz-yolu/turbo/
+Ayrıntılar `turbo/README.md` dosyasında.
+
 Düz HTML, CSS ve JavaScript. Bütün çizimler, müzikler ve pistler bu proje için yapıldı.
 
 Çizimler çizgi film tarzında ve vektördür; oyun ekranın gerçek çözünürlüğünde çizilir, telefonda da büyük

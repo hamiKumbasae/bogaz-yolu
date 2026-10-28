@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>İstanbul Turbo</title>
+<meta name="description" content="Gerçek İstanbul sokaklarında 3D yarış: Cankurtaran'dan Ortaköy'e sahil yolu.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,700;1,600;1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="hudTop">
+    <div id="timeBox"><div class="lbl">SÜRE</div><div id="time">0:00.00</div><div id="split"></div></div>
+    <div id="progress"><div id="progFill"></div><div id="progTicks"></div><div id="progMe"></div></div>
+    <div id="posBox"><div class="lbl">SIRA</div><div id="pos">1<span>/4</span></div></div>
+  </div>
+  <div id="nextCp"></div>
+  <canvas id="minimap" width="420" height="420"></canvas>
+  <div id="speedo">
+    <canvas id="gauge" width="440" height="440"></canvas>
+    <div id="spd">0</div><div id="spdU">km/s</div>
+    <div id="gear">1</div>
+    <div id="nitro"><div id="nitroFill"></div><span>NİTRO</span></div>
+  </div>
+  <div id="msg"></div>
+  <div id="bonus"></div>
+</div>
+
+<div id="loading">
+  <div class="logo"><span>İSTANBUL</span><b>TURBO</b></div>
+  <div id="loadBar"><div id="loadFill"></div></div>
+  <div id="loadTxt">Harita yükleniyor…</div>
+  <div class="credit">Harita verisi © OpenStreetMap katkıcıları</div>
+</div>
+
+<div id="menu" class="hidden">
+  <div class="logo"><span>İSTANBUL</span><b>TURBO</b></div>
+  <div class="sub">SAHİL YOLU · CANKURTARAN → ORTAKÖY · 8,6 KM</div>
+  <div id="menuItems"></div>
+  <div id="menuHelp"></div>
+  <div class="credit">Harita verisi © OpenStreetMap katkıcıları (ODbL) · Three.js</div>
+</div>
+
+<div id="pause" class="hidden">
+  <div class="title">DURAKLATILDI</div>
+  <div id="pauseItems"></div>
+</div>
+
+<div id="result" class="hidden">
+  <div class="title" id="resTitle">YARIŞ BİTTİ</div>
+  <div id="resBody"></div>
+  <div id="resItems"></div>
+</div>
+
+<div id="fps" class="hidden"></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
