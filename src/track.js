@@ -17,38 +17,107 @@
 
   // ---------------- Boğaz Yolu: etaplar katman katman 1 → 2 → 3 → 4 ----------------
   // Katmandaki j. etaptan sola dönen j'ye, sağa dönen j+1'e gider.
+  // zones: etabın içindeki semtler (to: bölgenin bittiği oran). Yalnız manzarayı değiştirir, pist aynı kalır.
   const STAGES = [
     { id: 'eminonu', layer: 0, name: 'Eminönü – Kabataş', short: 'EMİNÖNÜ', sea: 'R', land: 'city', time: 0, curv: 0.35, hills: 0.15, traffic: 0.9, len: 3000,
-      landItems: ['apartman', 'apartman', 'lamba', 'durak', 'simitci', 'cinar'], seaItems: ['vapur', 'tekne', 'balikci', 'vapur'],
-      marks: [{ at: 0.25, k: 'cami', side: 'land', x: 2.4 }, { at: 0.6, k: 'cami', side: 'land', x: 2.6 }] },
+      zones: [
+        { to: 0.42, style: true, tram: true, bldg: ['han'], back: ['han', 'han', 'apartman'], near: ['simitci', 'simitci', 'durak'], seaItems: ['balikekmek', 'vapur', 'balikekmek', 'tekne'] },
+        { to: 1, style: true, tram: true, bldg: ['tas_bina'], back: ['tas_bina', 'apartman'], near: ['durak', 'semsiye', 'simitci'], seaItems: ['vapur', 'tekne', 'balikci'] },
+      ],
+      marks: [
+        { at: 0.06, k: 'iskele', side: 'sea', x: 3.2, label: 'EMİNÖNÜ' },
+        { at: 0.16, k: 'misir_carsisi', side: 'land', x: 5.6, clear: 70 },
+        { at: 0.28, k: 'cami', side: 'land', x: 4.2, clear: 90 },
+        { at: 0.52, k: 'galata_kulesi', side: 'land', x: 5.4, clear: 75 },
+        { at: 0.64, k: 'kruvaziyer', side: 'sea', x: 9, clear: 60 },
+        { at: 0.74, k: 'cami', side: 'land', x: 4.2, clear: 60 },
+        { at: 0.88, k: 'iskele', side: 'sea', x: 3.2, label: 'KABATAŞ' },
+      ],
+      signs: [{ at: 0.45, text: 'KARAKÖY' }] },
 
     { id: 'ortakoy', layer: 1, name: 'Beşiktaş – Ortaköy', short: 'ORTAKÖY', sea: 'R', land: 'city', time: 1, curv: 0.5, hills: 0.2, traffic: 1.0, len: 3200,
-      landItems: ['apartman', 'cinar', 'lamba', 'durak', 'apartman', 'semsiye'], seaItems: ['tekne', 'balikci', 'vapur', 'yali'],
-      marks: [{ at: 0.82, k: 'cami', side: 'sea', x: 2.4 }, { at: 0.86, k: 'kopru_uzak', side: 'sea', x: 7 }] },
+      zones: [
+        { to: 0.48, style: true, bldg: ['tas_bina', 'apartman'], back: ['apartman', 'tas_bina'], near: ['durak', 'cinar', 'simitci'], seaItems: ['tekne', 'vapur'] },
+        { to: 1, style: true, bldg: ['ahsap_ev', 'apartman', 'ahsap_ev'], back: ['ahsap_ev', 'cinar'], near: ['kumpir', 'kumpir', 'semsiye', 'simitci'], seaItems: ['tekne', 'balikci', 'vapur'] },
+      ],
+      marks: [
+        { at: 0.1, k: 'saat_kulesi', side: 'sea', x: 2.2, clear: 100 },
+        { at: 0.18, k: 'saray', side: 'sea', x: 2.9, clear: 60 },
+        { at: 0.38, k: 'iskele', side: 'sea', x: 3.2, label: 'BEŞİKTAŞ' },
+        { at: 0.82, k: 'cami', side: 'sea', x: 2.4 },
+        { at: 0.86, k: 'kopru_uzak', side: 'sea', x: 7 },
+      ],
+      signs: [{ at: 0.52, text: 'ORTAKÖY' }] },
     { id: 'uskudar', layer: 1, name: 'Üsküdar – Kuzguncuk', short: 'ÜSKÜDAR', sea: 'L', land: 'city', time: 1, curv: 0.5, hills: 0.3, traffic: 0.95, len: 3200,
-      landItems: ['apartman', 'cinar', 'lamba', 'servi', 'simitci', 'durak'], seaItems: ['tekne', 'vapur', 'balikci'],
-      marks: [{ at: 0.12, k: 'kiz_kulesi', side: 'sea', x: 6 }, { at: 0.4, k: 'cami', side: 'land', x: 2.5 }] },
+      zones: [
+        { to: 0.5, style: true, bldg: ['ahsap_ev', 'apartman'], back: ['ahsap_ev', 'apartman'], near: ['semsiye', 'simitci', 'semsiye', 'cinar'], seaItems: ['vapur', 'tekne', 'balikci'] },
+        { to: 1, style: true, land: 'park', bldg: ['ahsap_ev'], back: ['ahsap_ev', 'cinar', 'servi'], near: ['cinar', 'semsiye'], seaItems: ['tekne', 'balikci', 'yali'] },
+      ],
+      marks: [
+        { at: 0.12, k: 'kiz_kulesi', side: 'sea', x: 6 },
+        { at: 0.22, k: 'iskele', side: 'sea', x: 3.2, label: 'ÜSKÜDAR' },
+        { at: 0.36, k: 'cami', side: 'land', x: 2.8, clear: 60 },
+      ],
+      signs: [{ at: 0.52, text: 'KUZGUNCUK' }] },
 
     { id: 'bebek', layer: 2, name: 'Bebek – Rumelihisarı', short: 'BEBEK', sea: 'R', land: 'park', time: 2, curv: 0.65, hills: 0.35, traffic: 1.05, len: 3400,
-      landItems: ['cinar', 'agac', 'lamba', 'yali', 'servi', 'semsiye'], seaItems: ['tekne', 'yali', 'balikci', 'tekne'],
-      marks: [{ at: 0.7, k: 'hisar', side: 'land', x: 2.2 }, { at: 0.74, k: 'hisar', side: 'land', x: 2.6 }, { at: 0.78, k: 'hisar', side: 'land', x: 2.2 }] },
+      zones: [
+        { to: 0.55, style: true, every: 12, bldg: ['kosk', 'ahsap_ev'], back: ['cinar', 'ahsap_ev', 'servi'], near: ['semsiye', 'cinar'], seaItems: ['yelkenli', 'yelkenli', 'yali', 'tekne'] },
+        { to: 1, style: true, every: 14, bldg: ['ahsap_ev'], back: ['cinar', 'servi', 'agac'], near: ['cinar', 'semsiye'], seaItems: ['yali', 'tekne', 'balikci', 'yelkenli'] },
+      ],
+      marks: [
+        { at: 0.16, k: 'cami', side: 'sea', x: 2.4, clear: 70 },
+        { at: 0.7, k: 'hisar', side: 'land', x: 2.2, clear: 70 }, { at: 0.74, k: 'hisar', side: 'land', x: 2.6 }, { at: 0.78, k: 'hisar', side: 'land', x: 2.2 },
+      ],
+      signs: [{ at: 0.6, text: 'RUMELİHİSARI' }] },
     { id: 'kopru', layer: 2, name: 'Boğaz Köprüsü', short: 'KÖPRÜ', sea: 'B', land: 'bridge', time: 2, curv: 0.25, hills: 0.5, traffic: 1.2, len: 3200,
       landItems: [], seaItems: [], marks: [] },
     { id: 'beylerbeyi', layer: 2, name: 'Beylerbeyi – Çengelköy', short: 'BEYLERBEYİ', sea: 'L', land: 'park', time: 2, curv: 0.65, hills: 0.35, traffic: 1.05, len: 3400,
-      landItems: ['cinar', 'agac', 'lamba', 'semsiye', 'servi', 'yali'], seaItems: ['tekne', 'yali', 'balikci'],
-      marks: [{ at: 0.15, k: 'saray', side: 'sea', x: 2.6 }, { at: 0.3, k: 'kopru_uzak', side: 'sea', x: 7 }] },
+      zones: [
+        { to: 0.45, style: true, every: 11, bldg: ['ahsap_ev', 'kosk'], back: ['cinar', 'ahsap_ev'], near: ['semsiye', 'cinar'], seaItems: ['tekne', 'yali', 'balikci'] },
+        { to: 1, style: true, every: 10, bldg: ['ahsap_ev'], back: ['ahsap_ev', 'cinar', 'servi'], near: ['semsiye', 'semsiye', 'cinar', 'simitci'], seaItems: ['tekne', 'balikci', 'yali'] },
+      ],
+      marks: [
+        { at: 0.15, k: 'saray', side: 'sea', x: 2.6 },
+        { at: 0.3, k: 'kopru_uzak', side: 'sea', x: 7 },
+        { at: 0.52, k: 'iskele', side: 'sea', x: 3.2, label: 'ÇENGELKÖY' },
+        { at: 0.72, k: 'kuleli', side: 'sea', x: 4.2, clear: 80 },
+      ],
+      signs: [{ at: 0.46, text: 'ÇENGELKÖY' }] },
 
     { id: 'sariyer', layer: 3, name: 'Emirgan – Sarıyer', short: 'SARIYER', sea: 'R', land: 'park', time: 3, curv: 0.8, hills: 0.45, traffic: 1.1, len: 3600, ending: 'fener',
-      landItems: ['agac', 'cinar', 'servi', 'lamba', 'yali', 'agac'], seaItems: ['tekne', 'yali', 'vapur', 'balikci'],
-      marks: [{ at: 0.2, k: 'kopru_uzak', side: 'sea', x: 7 }] },
+      zones: [
+        { to: 0.5, style: true, every: 12, bldg: ['kosk', 'kosk', 'ahsap_ev'], back: ['cinar', 'agac', 'servi'], near: ['lale', 'lale', 'lale', 'cinar'], nearEvery: 6, seaItems: ['yelkenli', 'tekne', 'yali', 'vapur'] },
+        { to: 1, style: true, every: 11, bldg: ['ahsap_ev', 'apartman'], back: ['agac', 'cinar'], near: ['simitci', 'semsiye', 'cinar'], seaItems: ['balik_lokantasi', 'tekne', 'balikci', 'balik_lokantasi'] },
+      ],
+      marks: [
+        { at: 0.08, k: 'iskele', side: 'sea', x: 3.2, label: 'EMİRGAN' },
+        { at: 0.2, k: 'kopru_uzak', side: 'sea', x: 7 },
+        { at: 0.8, k: 'iskele', side: 'sea', x: 3.2, label: 'SARIYER' },
+      ],
+      signs: [{ at: 0.5, text: 'YENİKÖY' }] },
     { id: 'fsm', layer: 3, name: 'Fatih Sultan Mehmet Köprüsü', short: 'FSM', sea: 'B', land: 'bridge', time: 3, curv: 0.3, hills: 0.55, traffic: 1.35, len: 3400, ending: 'kopru',
       landItems: [], seaItems: [], marks: [] },
     { id: 'kanlica', layer: 3, name: 'Kandilli – Kanlıca', short: 'KANLICA', sea: 'L', land: 'park', time: 3, curv: 0.8, hills: 0.45, traffic: 1.1, len: 3600, ending: 'yogurt',
-      landItems: ['yali', 'cinar', 'agac', 'lamba', 'semsiye', 'servi'], seaItems: ['yali', 'tekne', 'balikci', 'tekne'],
-      marks: [{ at: 0.3, k: 'hisar', side: 'land', x: 2.3 }, { at: 0.34, k: 'hisar', side: 'land', x: 2.5 }] },
+      zones: [
+        { to: 1, style: true, every: 11, bldg: ['ahsap_ev', 'kosk'], back: ['cinar', 'agac', 'ahsap_ev'], near: ['cinar', 'semsiye'], seaItems: ['yali', 'yali', 'tekne', 'balikci'] },
+      ],
+      marks: [
+        { at: 0.3, k: 'hisar', side: 'land', x: 2.3, clear: 70 }, { at: 0.34, k: 'hisar', side: 'land', x: 2.5 },
+        { at: 0.82, k: 'iskele', side: 'sea', x: 3.2, label: 'KANLICA' },
+      ],
+      signs: [{ at: 0.24, text: 'ANADOLU HİSARI' }] },
     { id: 'beykoz', layer: 3, name: 'Beykoz – Anadolu Kavağı', short: 'BEYKOZ', sea: 'L', land: 'forest', time: 3, curv: 0.9, hills: 0.6, traffic: 1.0, len: 3600, ending: 'kale',
-      landItems: ['agac', 'agac', 'servi', 'cinar', 'lamba'], seaItems: ['tekne', 'balikci', 'vapur'],
-      marks: [{ at: 0.92, k: 'kale', side: 'land', x: 3 }] },
+      zones: [
+        { to: 0.5, style: true, every: 6, bldg: ['agac', 'agac', 'cinar', 'agac', 'ahsap_ev'], back: ['agac', 'agac', 'servi'], near: ['agac', 'servi'], seaItems: ['tekne', 'balikci', 'vapur'] },
+        { to: 1, style: true, every: 12, bldg: ['ahsap_ev', 'agac'], back: ['agac', 'agac'], near: ['cinar', 'semsiye'], seaItems: ['balik_lokantasi', 'tekne', 'balik_lokantasi', 'balikci'] },
+      ],
+      marks: [
+        { at: 0.18, k: 'iskele', side: 'sea', x: 3.2, label: 'BEYKOZ' },
+        { at: 0.72, k: 'iskele', side: 'sea', x: 3.2, label: 'ANADOLU KAVAĞI' },
+        { at: 0.92, k: 'kale', side: 'land', x: 3 },
+      ],
+      signs: [{ at: 0.55, text: 'ANADOLU KAVAĞI' }] },
   ];
   const LAYERS = [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9]];
   for (const S of STAGES) { S.course = 'bogaz'; S.num = S.layer + 1; S.lvl = S.layer; }
@@ -199,7 +268,7 @@
   function buildStage(idx) {
     const S = STAGES[idx];
     const r = rng(idx * 7919 + 101);
-    const parts = S.parts || [{ len: S.len, sea: S.sea, land: S.land, landItems: S.landItems, seaItems: S.seaItems }];
+    const parts = S.parts || [{ len: S.len, sea: S.sea, land: S.land, landItems: S.landItems, seaItems: S.seaItems, zones: S.zones }];
     const segs = [];
     let y = 0;
     function seg(curve, ny) {
@@ -279,6 +348,15 @@
     for (let i = bodyEnd; i < segs.length; i++) { segs[i].sea = lastP.sea; segs[i].land = lastP.land; }
 
     // --- yol kenarı ---
+    // bölümün içindeki semt: bölümün ayarları semtin ayarlarıyla birleşir (her semt için bir kez)
+    const zoneMemo = new Map();
+    const zoneOf = (P, f) => {
+      if (!P.zones) return P;
+      const z = P.zones.find((q) => f < q.to) || P.zones[P.zones.length - 1];
+      let m = zoneMemo.get(z);
+      if (!m) { m = Object.assign({}, P, z); zoneMemo.set(z, m); }
+      return m;
+    };
     const pick = (arr) => arr[Math.floor(r() * arr.length)];
     // deniz tarafı ve otoyol kenarı için uzaklıklar (yarı yol genişliği cinsinden)
     const SEA_X = { balikci: () => 1.22, vapur: () => 7 + r() * 8, tekne: () => 3 + r() * 6, balikekmek: () => 2.7 + r() * 0.7, yali: () => 2.3 + r() * 0.6 };
@@ -286,7 +364,8 @@
     let pk = 0;
     for (let i = 0; i < bodyEnd; i++) {
       while (i >= ranges[pk].end) pk++;
-      const P = ranges[pk].P, li = i - ranges[pk].start, pLen = ranges[pk].end - ranges[pk].start;
+      const li = i - ranges[pk].start, pLen = ranges[pk].end - ranges[pk].start;
+      const P = zoneOf(ranges[pk].P, li / pLen);
       const s = segs[i];
       s.sea = P.sea; s.land = P.land;
       const sideSign = seaSide(P.sea); // denizin yönü
@@ -373,8 +452,8 @@
           s.sprites.push({ k, x: sideSign * (SEA_X[k] ? SEA_X[k]() : 3 + r() * 5), flip: k === 'balikci' ? sideSign < 0 : r() < 0.5, nohit: true });
         }
         if (i % 24 === 0) s.sprites.push({ k: 'lamba', x: ls * (1.2 + tr), flip: ls < 0, nohit: !!tr });
-        if (P.near && i % 11 === 0 && r() < 0.55) s.sprites.push({ k: pick(P.near), x: ls * (1.4 + tr + r() * 0.25), flip: r() < 0.5, nohit: !!tr });
-        if (P.bldg && i % 8 === 3) s.sprites.push({ k: pick(P.bldg), x: ls * (2.4 + tr + r() * 0.5), v: Math.floor(r() * 6), flip: r() < 0.5, nohit: !!tr });
+        if (P.near && i % (P.nearEvery || 11) === 0 && r() < 0.55) s.sprites.push({ k: pick(P.near), x: ls * (1.4 + tr + r() * 0.25), flip: r() < 0.5, nohit: !!tr });
+        if (P.bldg && i % (P.every || 8) === 3) s.sprites.push({ k: pick(P.bldg), x: ls * (2.4 + tr + r() * 0.5), v: Math.floor(r() * 6), flip: r() < 0.5, nohit: !!tr });
         if (P.back && i % 11 === 6 && r() < 0.65) s.sprites.push({ k: pick(P.back), x: ls * (3.9 + tr + r() * 1.6), v: Math.floor(r() * 6), flip: r() < 0.5, nohit: !!tr });
         continue;
       }

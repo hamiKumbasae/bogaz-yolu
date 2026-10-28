@@ -35,7 +35,8 @@ function startRace(seed, at) {
 const KNOWN = ['lamba', 'korkuluk', 'cinar', 'servi', 'agac', 'apartman', 'yali', 'cami', 'hisar', 'kiz_kulesi', 'tekne', 'vapur', 'balikci',
   'simitci', 'durak', 'tabela', 'kopru_kule', 'aski', 'semsiye', 'saray', 'kale', 'kopru_uzak', 'basla', 'kontrol', 'bitis', 'ayrim',
   'sur', 'ayasofya', 'sultanahmet', 'galata_kulesi', 'camlica_kulesi', 'camlica_camii', 'bariyer', 'otoyol_lamba', 'levha', 'ustgecit', 'tunel_agzi', 'tunel_levha',
-  'ahsap_ev', 'han', 'tas_bina', 'site', 'rezidans', 'plaza', 'reklam', 'iskele', 'balikekmek', 'misir_carsisi', 'kumpir', 'saat_kulesi', 'kruvaziyer'];
+  'ahsap_ev', 'han', 'tas_bina', 'site', 'rezidans', 'plaza', 'reklam', 'iskele', 'balikekmek', 'misir_carsisi', 'kumpir', 'saat_kulesi', 'kruvaziyer',
+  'kosk', 'lale', 'yelkenli', 'kuleli', 'balik_lokantasi'];
 function commonStageChecks(st, S) {
   const kinds = new Set();
   for (const s of st.segs) for (const sp of s.sprites) kinds.add(sp.k);
@@ -150,11 +151,13 @@ function commonStageChecks(st, S) {
   ok(Math.sign(d) === -Math.sign(c) && Math.abs(d) > 0.1, `virajda dışa savrulma (${d.toFixed(2)}, viraj ${c.toFixed(1)})`);
 }
 {
-  // yol kenarındaki nesneye çarpma
-  const G = startRace(4);
+  // yol kenarındaki nesneye çarpma (duvarın arabayı tutmadığı bir yerde: turun ilk etabındaki surlar)
+  const G = BY.newRace({ seed: 4, course: 'tur' }); run(G, NONE, 3.5);
   G.cars = [];
-  const i = G.track.findIndex((s, k) => k > 100 && s.sprites.some((sp) => BY.HIT[sp.k] && !sp.nohit && Math.abs(sp.x) < 2.5));
-  const sp = G.track[i].sprites.find((p) => BY.HIT[p.k] && !p.nohit && Math.abs(p.x) < 2.5);
+  const reach = (s, p) => { const [L, R] = BY.limits(s), x = s.cx + p.x * RW; return x > L && x < R; };
+  const hits = (s, p) => BY.HIT[p.k] && !p.nohit && Math.abs(p.x) < 2.6 && reach(s, p);
+  const i = G.track.findIndex((s, k) => k > 100 && s.sprites.some((p) => hits(s, p)));
+  const sp = G.track[i].sprites.find((p) => hits(G.track[i], p));
   G.pos = G.track[i - 3].z - PLAYER_Z; G.speed = MAX * 0.7; G.px = G.track[i].cx + sp.x * RW;
   run(G, { steer: 0, gas: 1 }, 0.5, (g) => g.phase === 'crash');
   ok(G.phase === 'crash', `nesneye (${sp.k}) çarpınca kaza`);

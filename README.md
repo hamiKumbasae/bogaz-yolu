@@ -35,6 +35,11 @@ Sarıyer       Köprüsü                Kanlıca         Anadolu Kavağı
 Yolculuk sabah başlar, gün batımında biter. Dört son var: **Rumeli Feneri**, **köprüde gün batımı**,
 **Kanlıca yoğurdu** ve **Yoros Kalesi**.
 
+Her etabın içinde semtler sırayla değişir: Eminönü'nde hanlar ve balık-ekmekçiler, Karaköy'de taş binalar ve
+tramvay; Beşiktaş'ta Dolmabahçe, Ortaköy'de kumpirciler; Üsküdar ve Kuzguncuk'ta renkli ahşap evler; Bebek'te
+köşkler ve yelkenliler; Beylerbeyi ve Çengelköy'de saray, Kuleli ve çay bahçeleri; Emirgan'da köşkler ve lale
+bahçeleri, Sarıyer'de balık lokantaları; Kanlıca'da yalılar; Beykoz'da koru, Anadolu Kavağı'nda iskele.
+
 ## İstanbul Turu rotası
 
 Yol ayrımı yoktur; 7 etabı sırayla sürersin:

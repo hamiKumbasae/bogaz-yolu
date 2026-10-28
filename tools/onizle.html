@@ -85,8 +85,8 @@ window.tower = function () {
 <script>
 // semt çizimleri: her çeşidiyle
 window.semt = function () {
-  size(384, 420);
-  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 420);
+  size(384, 520);
+  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 520);
   const A = BY_ART; let x = 2, y = 2, rowH = 0;
   const put = (img, maxH) => { const s = Math.min(1, maxH / img.lh, 120 / img.lw); const w = img.lw * s, h = img.lh * s; if (x + w > 382) { x = 2; y += rowH + 4; rowH = 0; } ctx.drawImage(img, x, y, w, h); x += w + 4; rowH = Math.max(rowH, h); };
   const one = (k, sp, mh) => { const p = A.sprite(k, sp, 1); const s = Math.min(1, mh / p.lh, 120 / p.lw); put(A.sprite(k, sp, p.lw * s * S), mh); };
@@ -99,5 +99,27 @@ window.semt = function () {
   for (let v = 0; v < 5; v++) one('reklam', { v }, 44);
   one('iskele', { label: 'EMİNÖNÜ' }, 50); one('balikekmek', {}, 40); one('misir_carsisi', {}, 50); one('kumpir', {}, 40); one('saat_kulesi', {}, 70); one('kruvaziyer', {}, 40);
   put(A.car('tramvay', 0, 110 * S * 0.6), 60);
+  for (let v = 0; v < 3; v++) one('kosk', { v }, 50);
+  one('lale', {}, 24); one('yelkenli', {}, 50); one('kuleli', {}, 60); one('balik_lokantasi', {}, 44);
+};
+</script>
+<script>
+// Boğaz Yolu: idx etabına (0-9) git, gövdenin frac oranında çiz
+window.bog = function (idx, frac, opts) {
+  opts = opts || {};
+  size(384, 216);
+  const PATH = { 0: [], 1: [0], 2: [1], 3: [0, 0], 4: [0, 1], 5: [1, 1], 6: [0, 0, 0], 7: [0, 0, 1], 8: [1, 1, 0], 9: [1, 1, 1] };
+  const G = BY.newRace({ seed: opts.seed || 7 }); const b = BY_BOT(PATH[idx].concat([0, 0, 0])); G.bgX = 0;
+  for (let i = 0; i < 60 * 600 && G.route[G.cur] !== idx; i++) BY.step(G, b(G), 1 / 60);
+  const st = BY.curStage(G);
+  const target = Math.floor(st.start + frac * (st.bodyEnd - st.start));
+  G.pos = target * BY.SEG - BY.PLAYER_Z; G.px = G.track[target].cx; G.cars = []; G.speed = BY.MAX * 0.6; G.t = opts.t || 0;
+  if (opts.tramAt) { const gap = 170 * BY.SEG, v = BY.MAX * 0.32, z0 = (target + opts.tramAt) * BY.SEG; G.t = (((z0 % gap) + gap) % gap) / v; }
+  if (opts.traffic) {
+    const kinds = ['araba', 'taksi', 'dolmus', 'otobus', 'araba', 'kamyon'];
+    for (let k = 0; k < opts.traffic; k++) { const kind = kinds[(k * 3 + 1) % kinds.length], D = BY.CARS[kind], lx = BY.LANE_X[(k * 2 + 1) % 3]; G.cars.push({ kind, z: (target + 14 + k * 23) * BY.SEG, x: lx, tx: lx, speed: BY.MAX * 0.3, w: D.w, len: D.len, laneT: 99, color: k % 5 }); }
+  }
+  BY_RENDER.render(ctx, G, {});
+  return BY_TRACK.STAGES[G.route[G.cur]].name;
 };
 </script>
