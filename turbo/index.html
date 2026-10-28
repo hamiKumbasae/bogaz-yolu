@@ -8,9 +8,31 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,700;1,600;1,800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="src/style.css">
+<link rel="stylesheet" href="src/style.css?v=__V__">
+<meta name="surum" content="__V__">
 <script type="importmap">
-{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+{
+ "imports": {
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/",
+  "./src/atmosphere.js": "./src/atmosphere.js?v=__V__",
+  "./src/audio.js": "./src/audio.js?v=__V__",
+  "./src/carbody.js": "./src/carbody.js?v=__V__",
+  "./src/city.js": "./src/city.js?v=__V__",
+  "./src/hud.js": "./src/hud.js?v=__V__",
+  "./src/input.js": "./src/input.js?v=__V__",
+  "./src/landmarks.js": "./src/landmarks.js?v=__V__",
+  "./src/main.js": "./src/main.js?v=__V__",
+  "./src/physics.js": "./src/physics.js?v=__V__",
+  "./src/props.js": "./src/props.js?v=__V__",
+  "./src/shade.js": "./src/shade.js?v=__V__",
+  "./src/terrain.js": "./src/terrain.js?v=__V__",
+  "./src/textures.js": "./src/textures.js?v=__V__",
+  "./src/traffic.js": "./src/traffic.js?v=__V__",
+  "./src/util.js": "./src/util.js?v=__V__",
+  "./src/vehicles.js": "./src/vehicles.js?v=__V__"
+ }
+}
 </script>
 </head>
 <body>
@@ -61,6 +83,6 @@
 </div>
 
 <div id="fps" class="hidden"></div>
-<script type="module" src="src/main.js"></script>
+<script type="module" src="./src/main.js?v=__V__"></script>
 </body>
 </html>

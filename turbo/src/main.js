@@ -115,6 +115,7 @@ async function fetchProgress(url, onp, type = 'json') {
   return type === 'json' ? JSON.parse(new TextDecoder().decode(buf)) : buf.buffer;
 }
 const loadFill = $('loadFill'), loadTxt = $('loadTxt');
+const VER = (document.querySelector('meta[name=surum]') || {}).content || '';
 const prog = (f, t) => { loadFill.style.width = (f * 100).toFixed(1) + '%'; if (t) loadTxt.textContent = t; };
 
 // ---------------------------------------------------------------- oyun durumu
@@ -134,8 +135,8 @@ try { G.best = JSON.parse(localStorage.getItem('istanbulTurboBest') || 'null'); 
 async function boot() {
   prog(0.02, 'Harita indiriliyor…');
   const [data, hbuf] = await Promise.all([
-    fetchProgress('data/istanbul.json', (f) => prog(0.02 + f * 0.3)),
-    fetchProgress('data/height.bin', () => {}, 'buf'),
+    fetchProgress('data/istanbul.json?v=' + VER, (f) => prog(0.02 + f * 0.3)),
+    fetchProgress('data/height.bin?v=' + VER, () => {}, 'buf'),
   ]);
   G.data = data;
   U.uSea.value = data.sea;

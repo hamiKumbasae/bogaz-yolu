@@ -37,6 +37,7 @@ jobs:
           mkdir -p _site/turbo/data
           cp -r turbo/index.html turbo/src turbo/vendor _site/turbo/
           cp turbo/data/istanbul.json turbo/data/height.bin _site/turbo/data/
+          sed -i "s/__V__/${GITHUB_SHA::8}/g" _site/turbo/index.html
       - uses: actions/configure-pages@v5
         with:
           enablement: true
