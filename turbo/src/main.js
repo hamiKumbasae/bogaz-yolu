@@ -29,7 +29,19 @@ const PAINTS = [['Ateş kırmızısı', 0xc81d25], ['Boğaz mavisi', 0x1f5fbf], 
 const RIVALS = [['Kartal', 0x1f5fbf, 0.85, -1], ['Poyraz', 0xeeeeea, 0.7, 1], ['Lodos', 0x0f7a5a, 0.55, -1]];
 
 const params = new URLSearchParams(location.search);
-const defaults = { time: 'aksam', weather: 'acik', traffic: 'normal', quality: 2, paint: 0, fps: false };
+// ekran kartına göre başlangıç kalitesi (kullanıcı değiştirirse onun seçimi saklanır)
+function detectQuality() {
+  try {
+    const g = document.createElement('canvas').getContext('webgl2');
+    if (!g) return 0;
+    const d = g.getExtension('WEBGL_debug_renderer_info');
+    const r = d ? String(g.getParameter(d.UNMASKED_RENDERER_WEBGL)) : '';
+    if (/Apple M[2-9]|Apple M1 (Pro|Max|Ultra)|RTX|Radeon RX [5-9]\d{3}|Radeon (Pro )?W?[67]\d{3}|Arc\(TM\) A7/i.test(r)) return 3;
+    if (/Intel.*(HD|UHD) Graphics( [56]\d\d)?\b|Mali|Adreno|PowerVR|SwiftShader|llvmpipe/i.test(r)) return 1;
+    return 2;
+  } catch (e) { return 2; }
+}
+const defaults = { time: 'aksam', weather: 'acik', traffic: 'normal', quality: detectQuality(), paint: 0, fps: false };
 const settings = (() => { try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem('istanbulTurbo') || '{}')); } catch (e) { return { ...defaults }; } })();
 if (params.has('q')) settings.quality = +params.get('q');
 if (params.has('t')) settings.time = params.get('t');
