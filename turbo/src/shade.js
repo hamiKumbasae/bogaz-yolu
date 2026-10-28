@@ -9,6 +9,7 @@ export const U = {
   uCover: { value: null }, // OSM kapsama dokusu (şehir dokusu deseni için)
   uCoverBox: { value: new THREE.Vector4(0, 0, 1, 1) },
   uSea: { value: -2 },
+  uFac: { value: null },   // cephe modülleri doku dizisi
   uFogSun: { value: new THREE.Color(0.8, 0.6, 0.5) },   // güneş yönündeki ufuk/sis rengi
   uFogAway: { value: new THREE.Color(0.5, 0.5, 0.6) },  // karşı yöndeki
   uSunDir: { value: new THREE.Vector3(0, 1, 0) },
@@ -77,12 +78,13 @@ export function patch(mat, key, o = {}) {
 }
 
 // ---------------------------------------------------------------- bina cepheleri
+// ---------------------------------------------------------------- bina cepheleri (doku dizisinden modüller)
 const FACADE_VDECL = /* glsl */`
-varying vec4 vB; varying vec2 vF;
+varying vec2 vF; varying vec4 vB; varying vec4 vW; varying vec4 vL; varying vec4 vS;
 #ifdef FILLER
   attribute vec4 iB;
 #else
-  attribute vec4 aB; attribute vec2 aF;
+  attribute vec2 aF; attribute vec4 aB; attribute vec4 aW; attribute vec4 aL; attribute vec4 aS;
 #endif
 `;
 const FACADE_VMAIN = /* glsl */`
@@ -90,116 +92,110 @@ const FACADE_VMAIN = /* glsl */`
 {
   float sx = length(instanceMatrix[0].xyz), sy = length(instanceMatrix[1].xyz), sz = length(instanceMatrix[2].xyz);
   float u = abs(normal.x) > 0.5 ? (position.z + 0.5) * sz : (position.x + 0.5) * sx;
-  vF = vec2(u + iB.y * 40.0, position.y * sy);
-  vB = vec4(iB.x, iB.y, normal.y > 0.5 ? 1.0 : 0.0, sy);
+  float wl = abs(normal.x) > 0.5 ? sz : sx;
+  float sd = iB.y;
+  vF = vec2(u, position.y * sy - 2.0);
+  vB = vec4(sd, normal.y > 0.5 ? 1.0 : 0.0, sy - 2.0, 0.38);
+  float mw = wl / max(1.0, floor(wl / 3.0 + 0.5));
+  vW = vec4(0.0, 0.0, mw, 3.0 + fract(sd * 13.0) * 0.3);
+  if (iB.x > 0.5) vL = vec4(6.0, 13.0, 13.0, 0.0);
+  else vL = vec4(fract(sd * 7.0) < 0.3 ? 2.0 : (fract(sd * 3.0) < 0.5 ? 0.0 : 6.0), fract(sd * 5.0) < 0.5 ? 8.0 : 10.0, 9.0, 0.0);
+  vS = vec4(0.0);
 }
 #else
-  vF = aF; vB = aB;
+  vF = aF; vB = aB; vW = aW; vL = aL; vS = aS;
 #endif
 `;
 
 const FACADE_FDECL = /* glsl */`
-varying vec4 vB; varying vec2 vF;
-struct Fac { float win; vec3 lit; float shade; float frame; float rail; float slab; float shop; float shut; };
-Fac facade(){
-  Fac r; r.win = 0.; r.lit = vec3(0.); r.shade = 1.; r.frame = 0.; r.rail = 0.; r.slab = 0.; r.shop = 0.; r.shut = 0.;
-  float st = vB.x, seed = vB.y, H = vB.w;
-  float u = vF.x, v = vF.y;
-  float fh = 3.1, cw = 3.0, wx = 0.27, wy0 = 0.30, wy1 = 0.84, gh = 4.2, litP = 0.34, balc = 0.55;
-  if (st > 0.5 && st < 1.5) { fh = 3.8; cw = 1.6; wx = 0.05; wy0 = 0.07; wy1 = 0.95; gh = 4.6; litP = 0.5; balc = 0.0; }
-  else if (st > 1.5 && st < 2.5) { fh = 4.6; cw = 3.4; wx = 0.31; wy0 = 0.26; wy1 = 0.78; gh = 0.0; litP = 0.22; balc = 0.0; }
-  else if (st > 2.5 && st < 3.5) { fh = 3.0; cw = 2.4; wx = 0.29; wy0 = 0.28; wy1 = 0.80; gh = 0.0; litP = 0.42; balc = 0.0; }
-  else if (st > 3.5 && st < 4.5) { fh = 5.4; cw = 2.9; wx = 0.30; wy0 = 0.20; wy1 = 0.86; gh = 0.0; litP = 0.30; balc = 0.0; }
-  else if (st > 4.5) { fh = 5.0; cw = 7.0; wx = 0.12; wy0 = 0.55; wy1 = 0.86; gh = 0.0; litP = 0.18; balc = 0.0; }
-  cw *= 0.85 + 0.3 * fract(seed * 7.31);
-  if (H < 7.5) gh = 0.0;
-  float top = H - (st > 0.5 && st < 1.5 ? 0.5 : 1.0);
-  if (v < 0.25 || v > top) return r;
-  if (v < gh) {
-    float sw = 4.2 * (0.85 + 0.3 * fract(seed * 3.7));
-    float x = u / sw; float w = min(fwidth(x) * 1.2, 0.3);
-    float m = boxf(x, 0.06, 0.94, w) * smoothstep(0.30, 0.42, v) * (1.0 - smoothstep(gh - 1.15, gh - 1.05, v));
-    float h = hash12(vec2(floor(x), seed * 91.));
-    r.win = m * 0.95; r.shop = 1.0;
-    vec3 c = mix(vec3(1.0, 0.74, 0.46), vec3(0.88, 0.95, 1.0), step(0.62, h));
-    r.lit = m * c * (h < 0.86 ? 1.1 : 0.0);
-    float band = smoothstep(gh - 1.0, gh - 0.95, v) * (1.0 - smoothstep(gh - 0.3, gh - 0.25, v));
-    r.shade = 1.0 - band * 0.25;
-    r.frame = band * boxf(x, 0.12, 0.88, w) * 0.0;
-    r.lit += band * boxf(x, 0.12, 0.88, w) * step(0.5, h) * mix(vec3(1.0, 0.18, 0.12), vec3(0.15, 0.55, 1.0), step(0.5, fract(h * 7.))) * 1.8;
-    return r;
-  }
-  float vv = (v - gh) / fh;
-  float fi = floor(vv);
-  float x = u / cw;
-  float wu = fwidth(x), wv = fwidth(vv);
-  float fw = min(wu, 0.25), fv2 = min(wv, 0.25);
-  float m = boxf(x, wx, 1.0 - wx, fw) * boxf(vv, wy0, wy1, fv2);
-  float fr = boxf(x, wx - 0.05, 1.0 - wx + 0.05, fw) * boxf(vv, wy0 - 0.06, wy1 + 0.03, fv2);
-  float far = smoothstep(0.12, 0.4, max(wu, wv));
-  float cover = (1.0 - 2.0 * wx) * (wy1 - wy0);
-  float id = hash13(vec3(floor(x), fi, seed * 37.));
-  // balkon: sütun gruplarında, zemin katın üstünde
-  float hasB = step(1.0 - balc, hash12(vec2(floor(x * 0.5), seed * 13.))) * step(0.5, fi + 0.1);
-  float fv = fract(vv);
-  float slab = hasB * boxf(x, 0.02, 0.98, fw) * (1.0 - smoothstep(0.065 - fv2, 0.065 + fv2, fv));
-  float railZone = hasB * boxf(x, 0.03, 0.97, fw) * smoothstep(0.065 - fv2, 0.065 + fv2, fv) * (1.0 - smoothstep(0.36 - fv2, 0.36 + fv2, fv));
-  float bars = boxf(u * 7.0, 0.0, 0.35, min(fwidth(u * 7.0), 0.3));
-  float rail = railZone * mix(max(bars, 1.0 - smoothstep(0.30, 0.33, fv)), 0.55, far);
-  // ahşap ev pancurları
-  float shut = 0.0;
-  if (st > 2.5 && st < 3.5) shut = (boxf(x, wx - 0.17, wx - 0.01, fw) + boxf(x, 1.0 - wx + 0.01, 1.0 - wx + 0.17, fw)) * boxf(vv, wy0, wy1, fv2) * step(0.35, id);
-  r.win = mix(m, cover, far);
-  r.frame = mix(max(fr - m, 0.0), 0.0, far);
-  r.slab = mix(slab, hasB * 0.07, far);
-  r.rail = mix(rail, hasB * 0.15, far);
-  r.shut = mix(shut, 0.0, far);
-  float lit = step(1.0 - litP, id);
-  vec3 lc = mix(vec3(1.0, 0.70, 0.40), vec3(1.0, 0.88, 0.70), fract(id * 13.));
-  lc = mix(lc, vec3(0.72, 0.84, 1.0), step(0.86, fract(id * 29.)));
-  r.lit = r.win * lit * lc * (0.7 + 1.3 * fract(id * 53.));
-  r.shade = 1.0 - 0.12 * (1.0 - smoothstep(0.0, 0.07, fv)) + 0.05 * step(0.5, fract(seed * 5.)) * (smoothstep(0.9, 0.93, fv));
-  return r;
+uniform sampler2DArray uFac;
+varying vec2 vF; varying vec4 vB; varying vec4 vW; varying vec4 vL; varying vec4 vS;
+vec4 facTex(vec2 cont, float layer) {
+  vec2 f = fract(cont);
+  return textureGrad(uFac, vec3(f.x, 1.0 - f.y, layer), dFdx(cont), dFdy(cont));
 }
 `;
 
 const FACADE_COLOR = /* glsl */`
-Fac fc; fc.win = 0.; fc.lit = vec3(0.); fc.shade = 1.; fc.frame = 0.; fc.rail = 0.; fc.slab = 0.; fc.shop = 0.; fc.shut = 0.;
-if (vB.z < 0.5) {
-  fc = facade();
-  vec3 wallC = diffuseColor.rgb * fc.shade;
-  wallC *= mix(0.70, 1.0, smoothstep(0.0, 3.5, vF.y)) * (0.88 + 0.24 * vnoise(vec2(vF.x * 0.3, vF.y * 0.07) + vB.y * 13.));
-  wallC = mix(wallC, vec3(0.80, 0.78, 0.74), fc.frame * 0.85);
-  wallC = mix(wallC, vec3(0.62, 0.60, 0.57), fc.slab);
-  wallC = mix(wallC, mix(vec3(0.42, 0.24, 0.14), vec3(0.18, 0.34, 0.26), step(0.5, fract(vB.y * 23.))), fc.shut);
-  vec3 glass = mix(vec3(0.05, 0.06, 0.07), vec3(0.11, 0.12, 0.13), fract(vB.y * 17.));
-  if (vB.x > 0.5 && vB.x < 1.5) glass = mix(vec3(0.07, 0.11, 0.14), vec3(0.11, 0.13, 0.11), fract(vB.y * 11.));
-  if (fc.shop > 0.5) glass = vec3(0.10, 0.09, 0.08);
-  diffuseColor.rgb = mix(wallC, glass, fc.win);
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.06, 0.065, 0.07), fc.rail);
+float fGlass = 0.0, fOpaque = 0.0, fLit = 0.0, fShop = 0.0;
+vec3 fRGB = vec3(0.0);
+if (vB.y < 0.5 || vB.y > 2.5) {
+  float seed = vB.x, H = vB.z;
+  float street = vW.x, gh = vW.y, modW = vW.z, fh = vW.w;
+  float u = vF.x, v = vF.y;
+  vec3 wallT = facTex(vec2(u, v) * 0.5, vL.x).rgb;
+  vec3 wall = diffuseColor.rgb * wallT * 1.15;
+  float gr = vnoise(vec2(u * 0.8 + seed * 40.0, v * 0.11)) * 0.6 + vnoise(vec2(u * 0.13, v * 0.09) + seed * 9.0) * 0.4;
+  wall *= 0.86 + 0.2 * gr;
+  wall *= mix(0.68, 1.0, smoothstep(0.0, 2.6, v));
+  vec4 m = vec4(0.0);
+  float top = H - 0.95;
+  if (vB.y < 0.5 && v > 0.05 && v < top) {
+    if (v < gh) {
+      if (street > 0.5) {
+        vec2 c = vec2(u / vS.w, v / gh);
+        float bay = floor(c.x);
+        float h = hash12(vec2(bay, seed * 71.0));
+        float layer = abs(bay - vS.z) < 0.5 ? 20.0 : (h < 0.3 ? vS.y : vS.x);
+        m = facTex(vec2(c.x, min(c.y, 0.999)), layer);
+        fShop = 1.0;
+        fLit = step(0.22, hash12(vec2(bay, seed * 13.0))) * (layer > 18.5 && layer < 19.5 ? 0.0 : 1.0);
+      } else {
+        vec2 c = vec2(u / modW, v / gh);
+        float ci = floor(c.x);
+        if (hash12(vec2(ci, seed * 5.0)) > 0.35) m = facTex(vec2(c.x, min(c.y, 0.999)), vL.y);
+        fLit = step(0.6, hash12(vec2(ci, seed * 3.0)));
+      }
+    } else {
+      float vv = (v - gh) / fh;
+      float fi = floor(vv);
+      vec2 c = vec2(u / modW, vv);
+      float ci = floor(c.x);
+      float h1 = hash13(vec3(ci, fi, seed * 37.0));
+      float bp = floor(vL.w), bo = floor(fract(vL.w) * 10.0 + 0.5);
+      bool balc = street > 0.5 && bp > 0.5 && abs(mod(ci, bp) - bo) < 0.5;
+      float layer = balc ? 14.0 : (h1 < 0.3 ? vL.z : vL.y);
+      bool blank = !balc && hash12(vec2(ci, seed * 91.0)) < (vL.y > 12.5 && vL.y < 13.5 ? 0.0 : 0.07);
+      // son kat kesik kalıyorsa pencere koyma
+      if (!blank && (fi + 1.0) * fh + gh < top + 0.4) m = facTex(c, layer);
+      fLit = step(1.0 - vB.w, h1);
+    }
+  }
+  float a = m.a;
+  float wallK = 1.0 - smoothstep(0.08, 0.3, a);
+  fGlass = smoothstep(0.3, 0.45, a) * (1.0 - smoothstep(0.62, 0.8, a));
+  fOpaque = smoothstep(0.65, 0.9, a);
+  fRGB = m.rgb;
+  diffuseColor.rgb = wall * wallK + m.rgb * (1.0 - wallK);
 } else {
   float n = vnoise(vWP.xz * 0.6) * 0.5 + vnoise(vWP.xz * 3.1) * 0.5;
   diffuseColor.rgb *= 0.78 + 0.36 * n;
-  if (vB.z > 1.5) diffuseColor.rgb *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(vWP.y * 3.0 + n * 0.3));
+  if (vB.y > 1.5) diffuseColor.rgb *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(vWP.y * 3.0 + n * 0.3));
 }
-diffuseColor.rgb *= 1.0 - 0.28 * uWet;
+diffuseColor.rgb *= 1.0 - 0.25 * uWet;
 `;
 
 const FACADE_ROUGH = /* glsl */`
-roughnessFactor = mix(roughnessFactor, fc.shop > 0.5 ? 0.32 : 0.12, fc.win);
-metalnessFactor = mix(metalnessFactor, fc.shop > 0.5 ? 0.15 : 0.5, fc.win);
-metalnessFactor = mix(metalnessFactor, 0.6, fc.rail);
+roughnessFactor = mix(roughnessFactor, 0.07, fGlass);
+roughnessFactor = mix(roughnessFactor, 0.55, fOpaque);
+metalnessFactor = mix(metalnessFactor, 0.5, fGlass);
 roughnessFactor *= 1.0 - 0.35 * uWet;
 `;
 
 const FACADE_EMISSIVE = /* glsl */`
-totalEmissiveRadiance += fc.lit * uNight * uNight * 1.25;
+{
+  float hh = hash12(floor(vF * 0.37) + vB.x * 17.0);
+  vec3 warm = mix(vec3(1.0, 0.68, 0.38), vec3(0.85, 0.9, 1.0), step(0.85, hh));
+  vec3 litC = warm * 0.55 + fRGB * mix(1.6, 2.2, fShop);
+  totalEmissiveRadiance += fGlass * fLit * litC * uNight * uNight * 1.3;
+}
 `;
 
 export function facadeMaterial(filler = false) {
-  const m = new THREE.MeshStandardMaterial({ vertexColors: !filler, roughness: 0.86, metalness: 0.0 });
+  const m = new THREE.MeshStandardMaterial({ vertexColors: !filler, roughness: 0.88, metalness: 0.0 });
   if (filler) m.defines = { FILLER: 1 };
-  return patch(m, filler ? 'facade-filler' : 'facade', {
+  return patch(m, filler ? 'facade2-filler' : 'facade2', {
+    uniforms: { uFac: U.uFac },
     vdecl: FACADE_VDECL, vmain: FACADE_VMAIN, fdecl: FACADE_FDECL, color: FACADE_COLOR, rough: FACADE_ROUGH, emissive: FACADE_EMISSIVE,
   });
 }

@@ -5,8 +5,12 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Height, buildTerrain } from './terrain.js';
-import { buildGround, buildBuildings, coverage, buildFiller } from './city.js';
+import { buildGround, coverage, buildFiller } from './city.js';
+import { buildBuildings } from './buildings.js';
+import { buildDetails } from './details.js';
+import { StreetLife, buildStreetFurniture } from './life.js';
 import { buildLandmarks, updateBridgeLights } from './landmarks.js';
 import { buildProps, BuildingIndex, buildGates } from './props.js';
 import { Atmosphere, PRESETS } from './atmosphere.js';
@@ -70,7 +74,7 @@ function resize() {
   camera.updateProjectionMatrix();
   if (composer) { composer.setPixelRatio(pr); composer.setSize(innerWidth, innerHeight); }
 }
-let composer, bloom, grade;
+let composer, bloom, grade, gtao;
 const GradeShader = {
   uniforms: { tDiffuse: { value: null }, uBlur: { value: 0 }, uVig: { value: 0.32 }, uSat: { value: 1.08 }, uTint: { value: new THREE.Vector3(1, 1, 1) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -95,6 +99,23 @@ function setupComposer() {
   const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: Q >= 2 ? 4 : 0 });
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
+  if (Q >= 2 && !params.has('noao')) {
+    // ortam gölgelemesi: köşelerde, balkon altlarında, binaların dibinde yumuşak gölge (yarım çözünürlük)
+    gtao = new GTAOPass(scene, camera, innerWidth / 2, innerHeight / 2);
+    gtao.updateGtaoMaterial({ radius: 2.2, distanceExponent: 1.6, thickness: 3.0, scale: 1.2, distanceFallOff: 1.0, samples: Q >= 3 ? 16 : 10 });
+    gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 10 });
+    gtao.blendIntensity = 0.9;
+    const setSize = gtao.setSize.bind(gtao);
+    gtao.setSize = (w, h) => setSize(Math.max(1, w / 2), Math.max(1, h / 2));
+    const render = gtao.render.bind(gtao);
+    gtao.render = (...a) => {
+      const hide = G.aoHide || [];
+      for (const o of hide) { o.userData.v = o.visible; o.visible = false; }
+      render(...a);
+      for (const o of hide) o.visible = o.userData.v;
+    };
+    composer.addPass(gtao);
+  }
   bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.3, 0.5, 0.85);
   bloom.enabled = Q >= 1;
   composer.addPass(bloom);
@@ -141,7 +162,7 @@ G.renderer = renderer;
 G.post = () => ({ bloom, grade, composer });
 G.applyLook = (t, w) => { if (t) settings.time = t; if (w) settings.weather = w; applyLook(); };
 G.start = (m) => startRace(m);
-G.placeAt = (s, lane = 0) => { placeOnRoute(G.car, s, lane); G.chase.init = false; };
+G.placeAt = (s, lane = 0) => { placeOnRoute(G.car, s, lane); G.chase.init = false; G.lastNr = null; if (G.life) G.life.reset(); };
 try { G.best = JSON.parse(localStorage.getItem('istanbulTurboBest') || 'null'); } catch (e) { G.best = null; }
 
 async function boot() {
@@ -163,7 +184,7 @@ async function boot() {
   prog(0.45, 'Yollar ve kaldırımlar…'); await nextFrame();
   buildGround(data, H, world, Q);
   prog(0.55, 'Binalar…'); await nextFrame();
-  buildBuildings(data, H, world);
+  G.plan = buildBuildings(data, H, world);
   const cov = coverage(data);
   prog(0.62, 'Şehir siluet…'); await nextFrame();
   if (Q >= 1) buildFiller(data, H, cov, world, Q);
@@ -184,10 +205,14 @@ async function boot() {
   cps[cps.length - 1].s = G.path.length - 6;
   cps[cps.length - 1].last = true;
   G.cps = cps;
+  prog(0.72, 'Balkonlar, tabelalar, klimalar…'); await nextFrame();
+  G.details = buildDetails(G.plan, G.path, Q, world);
   prog(0.74, 'Ağaçlar, lambalar, park etmiş arabalar…'); await nextFrame();
   const bidx = new BuildingIndex(data.buildings.filter((b) => !b.far));
   G.props = buildProps(data, H, G.path, G.li, bidx, world, Q);
   G.gates = buildGates(G.path, G.li, cps, H, world);
+  G.furniture = buildStreetFurniture(data, G.path, G.li, H, bidx, world, Q);
+  G.life = new StreetLife(G.path, G.li, H, bidx, scene, Q);
   prog(0.82, 'Çarpışma…'); await nextFrame();
   buildCollision(data, H);
   prog(0.86, 'Arabalar…'); await nextFrame();
@@ -198,6 +223,9 @@ async function boot() {
   G.hud = new Hud(data, G.path, cps);
   G.chase = new ChaseCam(camera);
   placeStart();
+  // ortam gölgelemesi geçişinde gizlenecekler: deniz (yansıma), gökyüzü, saydamlar
+  G.aoHide = [];
+  scene.traverse((o) => { if (o === G.atm.water || o === G.atm.sky || (o.material && !Array.isArray(o.material) && o.material.transparent)) G.aoHide.push(o); });
   // gölge haritası ve shader derleme
   prog(0.97, 'Hazırlanıyor…'); await nextFrame();
   menuCamera(0);
@@ -378,6 +406,7 @@ function placeStart() {
   G.maxS = s0; G.cpIdx = 0; G.raceT = 0; G.finishOrder = []; G.wrongT = 0;
   G.traffic.reset();
   G.traffic.initial = true;
+  if (G.life) G.life.reset();
   G.chase.init = false;
   for (const gt of G.gates) gt.g.visible = G.mode === 'race';
   G.lastNr = null;
@@ -724,6 +753,7 @@ function frame(dt, render) {
     grade.uniforms.uBlur.value = 0;
   }
   if (G.state !== 'pause') {
+    G.life.update(dt, car, G.lastNr ? G.lastNr.s : G.path.nearest(car.x, car.z).s);
     G.traffic.render();
     G.smoke.update(dt);
     updateBoats(dt);

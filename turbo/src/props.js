@@ -65,13 +65,34 @@ export function buildProps(data, H, path, li, bidx, group, quality) {
   const up = new THREE.Vector3(0, 1, 0);
   const place = (x, y, z, ry = 0, s = 1, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(up, ry), new THREE.Vector3(s, sy, s));
 
-  // ---------------- ağaçlar
-  const leafy = mergeGeometries([
-    colored(new THREE.CylinderGeometry(0.16, 0.26, 3.2, 5, 1, true).translate(0, 1.6, 0), 0x4a3a2a),
-    colored(new THREE.IcosahedronGeometry(2.0, 0).translate(0, 4.3, 0), 0x3d5a2a),
-    colored(new THREE.IcosahedronGeometry(1.6, 0).rotateY(0.7).translate(1.0, 3.7, 0.4), 0x46652f),
-    colored(new THREE.IcosahedronGeometry(1.5, 0).rotateX(0.5).translate(-0.8, 3.9, -0.6), 0x365224),
+  // ---------------- ağaçlar: gövde + yaprak kümesi kartları (alfa kesimli, küresel normaller)
+  const trunkG = mergeGeometries([
+    colored(new THREE.CylinderGeometry(0.13, 0.24, 3.8, 6, 1, true).translate(0, 1.9, 0), 0x4b3b2d),
+    colored(new THREE.CylinderGeometry(0.05, 0.1, 1.8, 5, 1, true).rotateZ(0.7).translate(0.55, 3.6, 0), 0x4b3b2d),
+    colored(new THREE.CylinderGeometry(0.05, 0.1, 1.6, 5, 1, true).rotateZ(-0.6).rotateY(1.2).translate(-0.3, 3.5, -0.4), 0x4b3b2d),
   ]);
+  const cards = [];
+  const centers = [[0, 4.9, 0, 2.1], [1.2, 4.2, 0.5, 1.6], [-1.0, 4.3, -0.6, 1.6], [0.2, 4.1, -1.1, 1.5], [-0.3, 5.9, 0.3, 1.5], [0.7, 5.4, -0.5, 1.4]];
+  for (const [cx, cy, cz, rr] of centers) {
+    for (let k = 0; k < 3; k++) {
+      const g = new THREE.PlaneGeometry(rr * 2.1, rr * 2.1).rotateY((k * Math.PI) / 3 + cx).translate(cx, cy, cz);
+      // küresel normaller: kümeye hacimli ışık
+      const pos = g.attributes.position, nor = g.attributes.normal;
+      for (let i = 0; i < pos.count; i++) {
+        const nx = pos.getX(i), ny = pos.getY(i) - 4.6, nz = pos.getZ(i);
+        const L = Math.hypot(nx, ny + 0.8, nz) || 1;
+        nor.setXYZ(i, nx / L, (ny + 0.8) / L, nz / L);
+      }
+      cards.push(g);
+    }
+  }
+  const leafG = mergeGeometries(cards);
+  const leafTex = TX.leaves();
+  const leafMat = patch(new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.85 }), 'leaves', {
+    color: 'diffuseColor.rgb *= 1.0 - 0.2 * uWet;',
+    normal: 'normal = normalize(vNormal);',   // iki yüzde de aynı küresel normal
+  });
+  const trunkMat = wetMaterial({ vertexColors: true, roughness: 0.95 }, 'trunk');
   const cypress = mergeGeometries([
     colored(new THREE.CylinderGeometry(0.14, 0.2, 1.4, 5, 1, true).translate(0, 0.7, 0), 0x4a3a2a),
     colored(new THREE.ConeGeometry(0.95, 8.5, 7, 1, true).translate(0, 5.4, 0), 0x22381c),
@@ -120,7 +141,11 @@ export function buildProps(data, H, path, li, bidx, group, quality) {
       addTree(q.x + Math.cos(a) * d, q.z + Math.sin(a) * d, 1);
     }
   }
-  inst(leafy, treeMat, trees, group, true);
+  inst(trunkG, trunkMat, trees, group, true);
+  const leafMeshes = inst(leafG, leafMat, trees, group, true) || [];
+  // yaprak tonu çeşitliliği
+  const tc = new THREE.Color();
+  for (const im of leafMeshes) for (let i = 0; i < im.count; i++) im.setColorAt(i, tc.setHSL(0.22 + r() * 0.08, 0.35 + r() * 0.2, 0.42 + r() * 0.18));
   inst(cypress, treeMat, cyps, group, true);
 
   // ---------------- sokak lambaları ve ışık havuzları
@@ -182,25 +207,51 @@ export function buildProps(data, H, path, li, bidx, group, quality) {
   const tank = mergeGeometries([clean(new THREE.CylinderGeometry(0.65, 0.65, 1.5, 7).rotateZ(Math.PI / 2).translate(0, 0.8, 0)),
     clean(new THREE.BoxGeometry(1.4, 0.5, 0.9).translate(0, 0.25, 0))]);
   const tankMat = wetMaterial({ color: 0xd9d6cf, roughness: 0.6, metalness: 0.3 }, 'tank');
-  const tanks = [];
+  // güneş enerjili su ısıtıcısı (panel + depo), çanak anten, TV anteni
+  const solar = mergeGeometries([
+    colored(new THREE.BoxGeometry(2.0, 0.06, 1.05).rotateX(-0.62).translate(0, 0.75, 0.05), 0x1d2c44),
+    colored(new THREE.BoxGeometry(2.05, 0.04, 1.1).rotateX(-0.62).translate(0, 0.72, 0.05), 0xb8bcc0),
+    colored(new THREE.CylinderGeometry(0.27, 0.27, 2.0, 10).rotateZ(Math.PI / 2).translate(0, 1.2, -0.42), 0xe8e8e4),
+    colored(new THREE.BoxGeometry(0.05, 1.2, 0.05).translate(-0.9, 0.6, -0.4), 0x9a9da0),
+    colored(new THREE.BoxGeometry(0.05, 1.2, 0.05).translate(0.9, 0.6, -0.4), 0x9a9da0),
+  ]);
+  const dish = mergeGeometries([
+    colored(new THREE.SphereGeometry(0.42, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.6).scale(1, 0.45, 1).rotateX(-1.1).translate(0, 0.9, 0), 0xd8d8d4),
+    colored(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5).translate(0, 0.45, -0.05), 0x77797c),
+  ]);
+  const antenna = mergeGeometries([
+    colored(new THREE.CylinderGeometry(0.025, 0.035, 2.8, 4).translate(0, 1.4, 0), 0x6d7073),
+    colored(new THREE.BoxGeometry(1.1, 0.03, 0.03).translate(0, 2.4, 0), 0x6d7073),
+    colored(new THREE.BoxGeometry(0.8, 0.03, 0.03).translate(0, 2.0, 0), 0x6d7073),
+    colored(new THREE.BoxGeometry(0.6, 0.03, 0.03).translate(0, 2.7, 0), 0x6d7073),
+  ]);
+  const roofMat = wetMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.25 }, 'roofstuff');
+  const tanks = [], solars = [], dishes = [], ants = [];
   for (const b of data.buildings) {
     if (b.far || b.s === 'palace' || b.s === 'stone') continue;
     const A = Math.abs(ringArea(b.r));
-    if (A < 70 || A > 2500 || r() < 0.35) continue;
+    if (A < 60 || A > 3000) continue;
     let cx = 0, cz = 0, gs = 0, gmax = -1e9;
     for (const p of b.r) { cx += p[0]; cz += p[1]; const g = H.ground(p[0], p[1]); gs += g; gmax = Math.max(gmax, g); }
     cx /= b.r.length; cz /= b.r.length;
     let top = gs / b.r.length + b.h;
     if (top < gmax + 2.5) top = gmax + 2.5;
-    if (!pointInRing(cx, cz, b.r)) continue;
-    const n = 1 + Math.floor(r() * 3);
-    for (let k = 0; k < n; k++) {
-      const x = cx + (r() - 0.5) * 3, z = cz + (r() - 0.5) * 3;
-      if (!pointInRing(x, z, b.r)) continue;
-      tanks.push(place(x, top, z, r() * 6.28, 0.8 + r() * 0.4));
-    }
+    // çatı kenarına yakın rastgele nokta (çatı katının dışında kalsın)
+    const spot = (k) => {
+      const p = b.r[Math.floor(r() * b.r.length)];
+      const t = k + r() * 0.15;
+      const x = p[0] + (cx - p[0]) * t, z = p[1] + (cz - p[1]) * t;
+      return pointInRing(x, z, b.r) ? [x, z] : null;
+    };
+    if (r() < 0.55) for (let k = 0; k < 1 + Math.floor(r() * 2); k++) { const q = spot(0.18); if (q) tanks.push(place(q[0], top, q[1], r() * 6.28, 0.8 + r() * 0.4)); }
+    if (r() < 0.38) { const q = spot(0.22); if (q) solars.push(place(q[0], top, q[1], (r() - 0.5) * 0.4)); }
+    if (r() < 0.3) { const q = spot(0.12); if (q) dishes.push(place(q[0], top, q[1], Math.PI + (r() - 0.5) * 0.8)); }
+    if (r() < 0.25) { const q = spot(0.3); if (q) ants.push(place(q[0], top, q[1], r() * 3)); }
   }
   inst(tank, tankMat, tanks, group, false);
+  inst(solar, roofMat, solars, group, true);
+  inst(dish, roofMat, dishes, group, false);
+  inst(antenna, roofMat, ants, group, false);
 
   // ---------------- park etmiş arabalar (basit kutu modeller)
   const parked = buildParked(data, H, bidx, r, quality);

@@ -9,7 +9,7 @@ function canvas(w, h = w) {
 }
 
 // döşenebilir değer gürültüsü (periyot = size/period hücre)
-function valueNoise(size, cells, seed) {
+export function valueNoise(size, cells, seed) {
   const r = rng(seed);
   const g = new Float32Array(cells * cells);
   for (let i = 0; i < g.length; i++) g[i] = r();
@@ -28,7 +28,7 @@ function valueNoise(size, cells, seed) {
   return out;
 }
 
-function fbm(size, base, oct, seed) {
+export function fbm(size, base, oct, seed) {
   const out = new Float32Array(size * size);
   let amp = 1, tot = 0;
   for (let o = 0; o < oct; o++) {
@@ -215,4 +215,27 @@ export function banner(text, sub) {
 // Gece gökyüzü yıldızları için nokta dokusu
 export function starDot() {
   return radial('rgba(255,255,255,1)', 'rgba(255,255,255,0)', 32);
+}
+
+// Yaprak kümesi dokusu (ağaç kartları için, alfa kesimli)
+export function leaves() {
+  const S = 512, c = canvas(S), g = c.getContext('2d');
+  const r = rng(314);
+  g.clearRect(0, 0, S, S);
+  for (let k = 0; k < 2600; k++) {
+    // yuvarlak kümeye dağılım, kenara doğru seyrelir
+    const a = r() * Math.PI * 2, d = Math.pow(r(), 0.65) * S * 0.46;
+    const x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d * 0.92;
+    const top = 1 - y / S;
+    const l = 0.55 + top * 0.35 + (r() - 0.5) * 0.25 - (d / (S * 0.46)) * 0.12;
+    const h = 95 + r() * 30;
+    g.fillStyle = `hsl(${h}, ${38 + r() * 22}%, ${Math.max(10, Math.min(60, l * 46))}%)`;
+    g.save(); g.translate(x, y); g.rotate(r() * Math.PI);
+    g.beginPath(); g.ellipse(0, 0, 5 + r() * 6, 2.5 + r() * 3, 0, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
 }
