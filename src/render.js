@@ -6,12 +6,12 @@
   const W = 384, H = 216, HW = W / 2, HH = H / 2;
   const DRAW = 260;
   const { SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX } = BY;
-  const TUN_H = TR.TUN_H;
+  const TUN_H = TR.TUN_H, TRAM_W = TR.TRAM_W;
   const TUN_HAZE = '#20222c';
   // tünel kesiti (yarı yol genişliği / tavan yüksekliği cinsinden): duvar, pah, tavan
   const TW = 1.25, TC = 0.82, TWH = 0.58;
   // yüksek simgeler: tepe arkasında kalsalar da üstleri görünür
-  const TALL = { cami: 1, saray: 1, kale: 1, hisar: 1, kiz_kulesi: 1, kopru_uzak: 1, kopru_kule: 1, ayasofya: 1, sultanahmet: 1, galata_kulesi: 1, camlica_kulesi: 1, camlica_camii: 1 };
+  const TALL = { cami: 1, saray: 1, kale: 1, hisar: 1, kiz_kulesi: 1, kopru_uzak: 1, kopru_kule: 1, ayasofya: 1, sultanahmet: 1, galata_kulesi: 1, camlica_kulesi: 1, camlica_camii: 1, misir_carsisi: 1, saat_kulesi: 1, rezidans: 1, plaza: 1 };
 
   // sis rengi karışımları önbelleği (renk + 32 kademe)
   const fogCache = new Map();
@@ -100,14 +100,25 @@
         B(hi, hi + 0.3, hi, hi + 0.3, s.sea === 'B' ? C('#8a8a92') : pave);
         band(ctx, X1, Y1, (hi + 0.3) * W1, W * 4, X2e, Y2, (hi + 0.3) * W2e, W * 4, seaC);
       }
+      // Galata Köprüsü'nde tramvay solda: sol kaldırım ve deniz tramvay yolunun dışında başlar
+      const wl = water && s.tram < 0 ? TRAM_W : 0;
       if (seaL) {
-        B(lo - 0.3, lo, lo - 0.3, lo, s.sea === 'B' ? C('#8a8a92') : pave);
-        band(ctx, X1, Y1, -W * 4, (lo - 0.3) * W1, X2e, Y2, -W * 4, (lo - 0.3) * W2e, seaC);
+        B(lo - 0.3 - wl, lo - wl, lo - 0.3 - wl, lo - wl, s.sea === 'B' ? C('#8a8a92') : pave);
+        band(ctx, X1, Y1, -W * 4, (lo - 0.3 - wl) * W1, X2e, Y2, -W * 4, (lo - 0.3 - wl) * W2e, seaC);
       }
       if (water) {
         const edge = C(s.sea === 'G' ? '#3a4a6a' : '#5a5a64');
         B(hi + 0.3, hi + 0.38, hi + 0.3, hi + 0.38, edge);
-        B(lo - 0.38, lo - 0.3, lo - 0.38, lo - 0.3, edge);
+        B(lo - 0.38 - wl, lo - 0.3 - wl, lo - 0.38 - wl, lo - 0.3 - wl, edge);
+      }
+      if (s.tram) {
+        // T1 tramvay yolu: taş döşeli yatak, iki ray, dış kenarda bordür
+        const t = s.tram, e = t < 0 ? lo : hi;
+        const a = Math.min(e, e + t * TRAM_W), b = Math.max(e, e + t * TRAM_W);
+        B(a, b, a, b, C(light ? '#a8a092' : '#a09888'));
+        const o = e + t * TRAM_W;
+        B(Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), C('#dcd6ca'));
+        for (const q of [0.38, 0.86]) { const c0 = e + t * q; B(c0 - 0.025, c0 + 0.025, c0 - 0.025, c0 + 0.025, C('#4e4a54')); }
       }
       if (hwy) {
         // banket ve beton ayaklar; E-5'te solda metrobüs yolu ve karşı bariyer
@@ -165,7 +176,8 @@
   }
 
   // yazı taşıyan nesneler aynalanmaz (tabelalar ters okunmasın)
-  const NOFLIP = { apartman: 1, durak: 1, simitci: 1, tabela: 1, ayrim: 1, basla: 1, kontrol: 1, bitis: 1, levha: 1, tunel_agzi: 1, ustgecit: 1, tunel_levha: 1 };
+  const NOFLIP = { apartman: 1, durak: 1, simitci: 1, tabela: 1, ayrim: 1, basla: 1, kontrol: 1, bitis: 1, levha: 1, tunel_agzi: 1, ustgecit: 1, tunel_levha: 1,
+    han: 1, tas_bina: 1, iskele: 1, reklam: 1, plaza: 1, kumpir: 1, balikekmek: 1, misir_carsisi: 1, saat_kulesi: 1 };
   function drawSprite(ctx, img, x, y, w, clipY, flip) {
     const h = w * img.lh / img.lw;
     if (w < 0.4 || y - h >= clipY) return;
@@ -179,18 +191,21 @@
     } else ctx.drawImage(img, 0, 0, img.width, sh, x - w / 2, y - h, w, dh);
   }
 
-  // E-5'in metrobüs yolundaki otobüsler: yalnız görüntü, çarpışmaz. Dünyada sabit aralıklı bir sıra halinde ilerler.
-  const MB_GAP = 95 * SEG, MB_V = MAX * 0.5, MB_X = -1.72;
+  // E-5'in metrobüs yolundaki otobüsler ve T1 tramvayları: yalnız görüntü, çarpışmaz.
+  // Dünyada sabit aralıklı bir sıra halinde ilerlerler.
+  const MB = { gap: 95 * SEG, v: MAX * 0.5 }, TRAM = { gap: 170 * SEG, v: MAX * 0.32 };
   function metrobuses(G, out) {
     const zlo = G.pos - SEG * 20, zhi = G.pos + SEG * (DRAW + 10);
-    const off = (G.t * MB_V) % MB_GAP;
     for (const st of G.stages) {
       if (st.end * SEG < zlo || st.start * SEG > zhi) continue;
       for (const p of st.parts) {
-        if (p.land !== 'e5') continue;
+        const D = p.land === 'e5' ? MB : p.tram ? TRAM : null;
+        if (!D) continue;
+        const kind = D === MB ? 'metrobus' : 'tramvay', x = D === MB ? -1.72 : p.tram * (1 + TRAM_W / 2);
+        const off = (G.t * D.v) % D.gap;
         const a = Math.max(zlo, p.start * SEG), b = Math.min(zhi, p.end * SEG);
         if (a >= b) continue;
-        for (let k = Math.ceil((a - off) / MB_GAP); k * MB_GAP + off < b; k++) out.push({ kind: 'metrobus', z: k * MB_GAP + off, x: MB_X, color: 0 });
+        for (let k = Math.ceil((a - off) / D.gap); k * D.gap + off < b; k++) out.push({ kind, z: k * D.gap + off, x, color: 0 });
       }
     }
   }
@@ -257,7 +272,7 @@
       ctx.fillStyle = glow; ctx.fillRect(sx - T.sun.r * 4, T.sun.y - T.sun.r * 4, T.sun.r * 8, T.sun.r * 8);
       ART.circ(ctx, sx, T.sun.y, T.sun.r, T.sun.c, null);
       tile(ctx, ART.clouds(time), bgX * 0.3, 4);
-      const pan = ART.panorama(time, ps.stage % 3);
+      const pan = ART.panorama(time, ps.stage % 3, TR.STAGES[ps.stage].pano);
       tile(ctx, pan, bgX * 0.6, HH - pan.lh + 2);
       ctx.fillStyle = ART.lgrad(ctx, 0, HH, 0, H, [[0, ART.mix(T.sea, T.haze, 0.35)], [0.25, T.sea], [1, T.seaDark]]);
       ctx.fillRect(0, HH + 1.5, W, HH);

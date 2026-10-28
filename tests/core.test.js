@@ -34,7 +34,8 @@ function startRace(seed, at) {
 // ---------- pist ----------
 const KNOWN = ['lamba', 'korkuluk', 'cinar', 'servi', 'agac', 'apartman', 'yali', 'cami', 'hisar', 'kiz_kulesi', 'tekne', 'vapur', 'balikci',
   'simitci', 'durak', 'tabela', 'kopru_kule', 'aski', 'semsiye', 'saray', 'kale', 'kopru_uzak', 'basla', 'kontrol', 'bitis', 'ayrim',
-  'sur', 'ayasofya', 'sultanahmet', 'galata_kulesi', 'camlica_kulesi', 'camlica_camii', 'bariyer', 'otoyol_lamba', 'levha', 'ustgecit', 'tunel_agzi', 'tunel_levha'];
+  'sur', 'ayasofya', 'sultanahmet', 'galata_kulesi', 'camlica_kulesi', 'camlica_camii', 'bariyer', 'otoyol_lamba', 'levha', 'ustgecit', 'tunel_agzi', 'tunel_levha',
+  'ahsap_ev', 'han', 'tas_bina', 'site', 'rezidans', 'plaza', 'reklam', 'iskele', 'balikekmek', 'misir_carsisi', 'kumpir', 'saat_kulesi', 'kruvaziyer'];
 function commonStageChecks(st, S) {
   const kinds = new Set();
   for (const s of st.segs) for (const sp of s.sprites) kinds.add(sp.k);
@@ -97,6 +98,17 @@ function commonStageChecks(st, S) {
   const [L1, R1] = BY.limits(hw);
   ok(R1 < 1.1 * RW && L1 < -4 * RW, 'sahilde yalnız deniz tarafında duvar');
   for (const sea of ['N', 'T', 'G']) { const [L, R] = BY.limits({ sea, fork: 0, cx: 0 }); ok(R < 1.1 * RW && L > -1.1 * RW, `${sea}: iki yanda duvar`); }
+  // Eminönü – Galata – Karaköy'de T1 tramvay yolu: kara tarafında ve köprüde solda; arabanın girmesine duvar izin vermez
+  const tst = TR.buildStage(C.first + 1);
+  ok(tst.parts.every((p) => p.tram !== 0) && tst.segs.slice(0, tst.bodyEnd).every((s) => s.tram === -1), 'tramvay yolu Eminönü\'nden Karaköy\'e solda');
+  { const [L, R] = BY.limits(Object.assign({}, tst.segs[100], { cx: 0 })); ok(L > -1.1 * RW && R < 1.1 * RW, 'tramvaylı yolda iki yanda duvar'); }
+  // semtlerin dokusu: her semtin kendine özgü yapıları var
+  const kindsOf = (i, p) => { const st = TR.buildStage(i), g = st.parts[p], ks = new Set(); for (const s of st.segs.slice(g.start, g.end)) for (const sp of s.sprites) ks.add(sp.k); return ks; };
+  ok(kindsOf(C.first + 1, 0).has('han') && kindsOf(C.first + 1, 0).has('balikekmek'), 'Eminönü: taş hanlar ve balık-ekmek tekneleri');
+  ok(kindsOf(C.first + 1, 2).has('tas_bina'), 'Karaköy: taş binalar');
+  ok(kindsOf(C.first + 2, 2).has('kumpir') && kindsOf(C.first + 2, 2).has('ahsap_ev'), 'Ortaköy: kumpir büfeleri ve ahşap evler');
+  ok(kindsOf(C.first + 4, 1).has('site') && !kindsOf(C.first + 4, 1).has('apartman'), 'Şile Otoyolu: modern siteler');
+  ok(kindsOf(C.first + 5, 0).has('plaza'), 'E-5: plazalar');
 }
 
 // ---------- fizik ----------

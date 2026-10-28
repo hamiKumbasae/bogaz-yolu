@@ -855,6 +855,262 @@
     }];
   }
 
+  // ---------------- semtlere özgü yapılar ----------------
+  // Çeşitli (v) ve yazılı (label) çizimler: VAR[k] = [g, y, çeşit sayısı, çiz(g, v)], LBL[k] = (yazı) → [g, y, çiz]
+  const VAR = {}, LBL = {};
+  const glass = (g, y0, y1, c0, c1) => lgrad(g, 0, y0, 0, y1, [[0, c0], [1, c1]]);
+  const winC = (g, y) => lgrad(g, 0, y, 0, y + 14, [[0, '#7a96bc'], [1, '#3e4e6c']]);
+  // Ahşap Osmanlı evi: cumbalı, pastel boyalı (Üsküdar, Ortaköy, Sultanahmet)
+  const WOOD = ['#e8a4a0', '#f2d27a', '#9ccbe0', '#a8d4a0', '#e6b07a', '#c8a8d8'];
+  VAR.ahsap_ev = [120, 156, WOOD.length, (g, v) => {
+    LW = 1.8;
+    const c = WOOD[v], d = shade(c, -0.18), tr = '#fbf7ee';
+    box(g, 6, 44, 108, 112, 1, c);
+    g.save(); rr(g, 6, 44, 108, 112, 1); g.clip();
+    g.strokeStyle = shade(c, -0.12); g.lineWidth = 0.8;
+    for (let y = 48; y < 156; y += 5) { g.beginPath(); g.moveTo(6, y); g.lineTo(114, y); g.stroke(); }
+    g.restore(); box(g, 6, 44, 108, 112, 1, null);
+    for (const x of [6, 108]) rect(g, x + 0.8, 45, 5, 110, tr);
+    // cumba
+    box(g, 26, 60, 68, 46, 1, shade(c, 0.1));
+    for (const x of [34, 76]) poly(g, [x, 106, x + 10, 106, x + 5, 116], d, K, 1.2);
+    for (let k = 0; k < 3; k++) { const x = 32 + k * 20; box(g, x, 66, 15, 32, 1, tr, K, 1.2); box(g, x + 2.4, 68.4, 10.2, 27.2, 0.6, winC(g, 68), null); line(g, x + 7.5, 68, x + 7.5, 96, tr, 1); }
+    rect(g, 26, 58, 68, 3, tr);
+    // yan ve alt pencereler, kapı
+    for (const x of [12, 98]) { box(g, x, 66, 10, 26, 1, tr, K, 1.1); box(g, x + 1.8, 68, 6.4, 22, 0.5, winC(g, 68), null); }
+    for (const x of [16, 84]) { box(g, x, 122, 18, 22, 1, tr, K, 1.2); box(g, x + 2.4, 124.4, 13.2, 17.2, 0.5, winC(g, 124), null); }
+    box(g, 50, 120, 20, 36, 2, shade(c, -0.35));
+    circ(g, 66, 139, 1.4, '#e8c060', null);
+    // kiremit çatı
+    poly(g, [-2, 46, 122, 46, 104, 18, 16, 18], '#b5523a');
+    g.strokeStyle = '#8e3a26'; g.lineWidth = 0.9;
+    for (let y = 24; y < 46; y += 6) { g.beginPath(); g.moveTo(16 - (y - 18) * 0.64, y); g.lineTo(104 + (y - 18) * 0.64, y); g.stroke(); }
+    box(g, 82, 4, 10, 16, 1, '#8a6a5a');
+  }];
+  // taş han: kemerli pencereler, altta dükkânlar (Eminönü, Sirkeci)
+  const HAN_SHOP = ['KURUYEMİŞ', 'BAHARAT', 'LOKUM', 'KAHVE', 'ŞEKERCİ', 'ATTAR'];
+  const HAN_ST = ['#cdb994', '#d9c9a8', '#c0a988'];
+  VAR.han = [140, 172, 6, (g, v) => {
+    LW = 1.8;
+    const st = HAN_ST[v % 3], sh = shade(st, -0.2);
+    box(g, 4, 20, 132, 152, 1, st);
+    g.save(); rr(g, 4, 20, 132, 152, 1); g.clip();
+    g.strokeStyle = 'rgba(110,90,60,0.32)'; g.lineWidth = 0.7;
+    for (let y = 26; y < 136; y += 6) { g.beginPath(); g.moveTo(4, y); g.lineTo(136, y); g.stroke(); }
+    for (let y = 46; y < 136; y += 36) { rect(g, 4, y, 132, 2.2, '#b8684c'); }
+    g.restore(); box(g, 4, 20, 132, 152, 1, null);
+    for (let f = 0; f < 3; f++) {
+      const y = 28 + f * 36;
+      for (let k = 0; k < 4; k++) archWin(g, 14 + k * 31, y, 18, 24, winC(g, y), K);
+      rect(g, 4, y + 30, 132, 2.4, sh);
+    }
+    box(g, 0, 12, 140, 9, 2, sh);
+    for (const x of [24, 108]) box(g, x, 2, 9, 11, 1, shade(st, -0.1));
+    // dükkânlar
+    box(g, 4, 136, 132, 36, 0, '#4a3a30');
+    for (let k = 0; k < 3; k++) { const x = 10 + k * 42; archWin(g, x, 142, 36, 30, lgrad(g, 0, 142, 0, 172, [[0, '#ffd88a'], [1, '#c88a3a']]), K); }
+    for (let k = 0; k < 6; k++) circ(g, 22 + k * 19, 168, 5.2, ['#c84a2a', '#e8b030', '#7a4a2a', '#d87a3a', '#a8c040', '#c86a5a'][(k + v) % 6], K, 1);
+    box(g, 26, 124, 88, 13, 2, '#1c3a6a', K, 1.2);
+    label(g, HAN_SHOP[v], 70, 130.8, 9, '#fff2c0');
+  }];
+  // Karaköy'ün neoklasik taş binaları: sütunlar, alınlıklı pencereler, ferforje balkonlar
+  const KK_C = ['#e8dcc4', '#d6cabb', '#ecc8b0', '#cdd2d6'];
+  const KK_SHOP = ['KAFE', 'BAKLAVA', 'LOKANTA', 'ANTİKA'];
+  VAR.tas_bina = [128, 184, 4, (g, v) => {
+    LW = 1.8;
+    const c = KK_C[v], d = shade(c, -0.2);
+    box(g, 4, 18, 120, 166, 1, c);
+    for (const x of [4, 62, 118]) rect(g, x, 19, 6, 132, shade(c, 0.12));
+    for (let f = 0; f < 4; f++) {
+      const y = 28 + f * 30;
+      rect(g, 4, y + 24, 120, 2.6, d);
+      for (let k = 0; k < 3; k++) {
+        const x = 16 + k * 36;
+        box(g, x, y, 22, 20, 1, '#f6f0e4', K, 1.1); box(g, x + 2.4, y + 2.4, 17.2, 15.6, 0.5, winC(g, y), null);
+        if (f % 2 === 0) poly(g, [x - 2, y, x + 24, y, x + 11, y - 6], '#f6f0e4', K, 1);
+        else box(g, x - 2, y - 4, 26, 3.4, 1, '#f6f0e4', K, 1);
+        if (f === 1 || f === 3) { line(g, x - 3, y + 19, x + 25, y + 19, K, 1.2); for (let q = x - 2; q < x + 25; q += 4) line(g, q, y + 15, q, y + 19, K, 0.7); }
+      }
+    }
+    // korniş
+    box(g, 0, 10, 128, 9, 1.4, d);
+    for (let x = 3; x < 126; x += 6) rect(g, x, 18.5, 3, 2.6, shade(d, -0.15));
+    // zemin kat: büyük kemerler, tente, tabela
+    box(g, 4, 150, 120, 34, 0, shade(c, -0.08));
+    for (let k = 0; k < 3; k++) archWin(g, 12 + k * 38, 154, 28, 30, lgrad(g, 0, 154, 0, 184, [[0, '#9ab8d4'], [1, '#4a6a8a']]), K);
+    const aw = ['#2a6a5a', '#8a2a2a', '#2a4a8a', '#6a4a2a'][v];
+    g.save(); rr(g, 8, 145, 112, 7, 2); g.clip();
+    for (let x = 8; x < 122; x += 8) rect(g, x, 145, 4, 7, x % 16 < 8 ? aw : '#f6f2e4');
+    g.restore(); rr(g, 8, 145, 112, 7, 2); F(g, null, K, 1.1);
+    box(g, 38, 135, 52, 10, 2, aw, K, 1.1);
+    label(g, KK_SHOP[v], 64, 140.4, 7, '#ffffff');
+  }];
+  // modern konut sitesi (Şile Otoyolu, E-5): beyaz yüksek blok, renkli balkonlar
+  const SITE_C = ['#e8763a', '#2aa49a', '#4a7ad8', '#d84a6a'];
+  VAR.site = [150, 210, 4, (g, v) => {
+    LW = 1.8;
+    const ac = SITE_C[v];
+    box(g, 6, 14, 138, 196, 2, lgrad(g, 6, 0, 144, 0, [[0, '#ffffff'], [0.7, '#eceef2'], [1, '#c8ccd4']]));
+    for (let f = 0; f < 11; f++) {
+      const y = 22 + f * 16.6;
+      for (let k = 0; k < 4; k++) {
+        const x = 14 + k * 33;
+        box(g, x, y, 24, 10, 0.8, glass(g, y, y + 10, '#8ab0d4', '#4a6488'), null);
+        if (k === 1 || k === 2) box(g, x - 3, y + 9, 30, 4, 1, k === 1 ? ac : shade(ac, 0.3), K, 0.8);
+      }
+    }
+    box(g, 2, 6, 146, 10, 2, shade(ac, -0.1));
+    box(g, 60, 192, 30, 18, 2, '#4a5468');
+  }];
+  // rezidans kulesi: cam cephe
+  VAR.rezidans = [84, 270, 3, (g, v) => {
+    LW = 1.8;
+    const cs = [['#8ad0d8', '#2a6a88'], ['#a8c4e8', '#3a5a9a'], ['#b8d8c8', '#3a7a6a']][v];
+    poly(g, [8, 270, 76, 270, 76, 30, 8, 14], glass(g, 14, 270, cs[0], cs[1]));
+    g.save(); g.beginPath(); g.moveTo(8, 270); g.lineTo(76, 270); g.lineTo(76, 30); g.lineTo(8, 14); g.closePath(); g.clip();
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 0.8;
+    for (let y = 20; y < 270; y += 9) { g.beginPath(); g.moveTo(8, y); g.lineTo(76, y + 4); g.stroke(); }
+    for (let x = 16; x < 76; x += 10) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 270); g.stroke(); }
+    poly(g, [8, 14, 30, 20, 30, 270, 8, 270], 'rgba(255,255,255,0.18)', null);
+    g.restore(); poly(g, [8, 270, 76, 270, 76, 30, 8, 14], null);
+    line(g, 60, 26, 60, 4, '#8a909c', 1.6); circ(g, 60, 4, 1.8, '#ff4a3a', null);
+  }];
+  // ofis plazası
+  const PLAZA_T = ['PLAZA', 'İŞ MERKEZİ', 'KULE'];
+  VAR.plaza = [110, 240, 3, (g, v) => {
+    LW = 1.8;
+    box(g, 6, 30, 98, 210, 2, glass(g, 30, 240, ['#6a8aa8', '#7aa4a0', '#8a8ab0'][v], '#2a3a54'));
+    g.save(); rr(g, 6, 30, 98, 210, 2); g.clip();
+    for (let x = 14; x < 104; x += 12) rect(g, x, 30, 3, 210, 'rgba(230,236,244,0.55)');
+    for (let y = 40; y < 240; y += 12) rect(g, 6, y, 98, 1.2, 'rgba(20,30,50,0.4)');
+    g.restore(); box(g, 6, 30, 98, 210, 2, null);
+    box(g, 16, 12, 78, 20, 2, '#e8ecf2');
+    let px = 12; while (textW(PLAZA_T[v], px) > 68 && px > 7) px -= 0.5;
+    label(g, PLAZA_T[v], 55, 22.4, px, '#2a3a54');
+  }];
+  // otoyol reklam panosu (uydurma reklamlar)
+  VAR.reklam = [220, 156, 5, (g, v) => {
+    LW = 2;
+    for (const x of [60, 152]) box(g, x, 88, 8, 68, 1.4, '#7a808c');
+    const [bg, fg, t1, t2] = [['#d8342a', '#fff2c0', 'SICAK SİMİT', 'her sabah taze'], ['#1e5aa8', '#ffffff', "İSTANBUL'U KEŞFET", 'vapurla bir tur'], ['#2a7a4a', '#fff8e0', 'ÇAY ZAMANI', 'ince belli bardakta'], ['#f4c531', '#2a1a10', 'BALIK EKMEK', 'Eminönü usulü'], ['#6a3a9a', '#ffffff', 'BOĞAZ TURU', 'iki kıta bir gün']][v];
+    box(g, 2, 2, 216, 90, 4, '#e8eaee');
+    box(g, 8, 8, 204, 78, 2, bg, K, 1.2);
+    let px = 22; while (textW(t1, px) > 130 && px > 10) px -= 1;
+    label(g, t1, 84, 38, px, fg);
+    label(g, t2, 84, 62, 12, fg, 'center', 500);
+    // küçük resim
+    const cx = 180, cy = 47;
+    if (v === 0) { g.fillStyle = '#c47a2c'; g.beginPath(); g.arc(cx, cy, 18, 0, Math.PI * 2); g.arc(cx, cy, 7, 0, Math.PI * 2, true); g.fill('evenodd'); }
+    else if (v === 1) { box(g, cx - 14, cy - 6, 28, 14, 2, '#ffffff'); poly(g, [cx - 22, cy + 8, cx + 22, cy + 8, cx + 16, cy + 18, cx - 16, cy + 18], '#24324e'); }
+    else if (v === 2) { poly(g, [cx - 8, cy - 18, cx + 8, cy - 18, cx + 4, cy - 2, cx + 7, cy + 14, cx - 7, cy + 14, cx - 4, cy - 2], '#c8401e'); ell(g, cx, cy + 18, 14, 3, '#fbf6ea'); }
+    else if (v === 3) { ell(g, cx, cy, 22, 9, '#e8b468'); poly(g, [cx - 14, cy - 2, cx + 14, cy - 2, cx + 18, cy + 4, cx - 18, cy + 4], '#9aa8b8', K, 1); }
+    else { circ(g, cx, cy, 16, '#ffd27a'); poly(g, [cx - 22, cy + 12, cx + 22, cy + 12, cx + 16, cy + 20, cx - 16, cy + 20], '#ffffff'); }
+  }];
+  // vapur iskelesi: kıyıda beyaz iskele binası, saat, adı yazılı
+  LBL.iskele = (name) => [230, 124, (g) => {
+    LW = 1.8;
+    for (let x = 12; x < 220; x += 18) box(g, x, 104, 6, 20, 1, '#6a5a4a');
+    box(g, 0, 98, 230, 8, 1.4, '#9a8a74');
+    box(g, 16, 46, 198, 54, 1, '#f6f2e8');
+    for (let x = 26; x < 206; x += 22) archWin(g, x, 58, 12, 26, winC(g, 58), K);
+    archWin(g, 101, 66, 28, 34, '#5a4030', K);
+    poly(g, [6, 48, 224, 48, 196, 26, 34, 26], '#5a6a7a');
+    box(g, 98, 4, 34, 28, 2, '#f6f2e8');
+    circ(g, 115, 18, 9, '#fbfbf6', K, 1.2); line(g, 115, 18, 115, 12, K, 1.2); line(g, 115, 18, 119, 20, K, 1.2);
+    poly(g, [94, 6, 136, 6, 115, -8], '#5a6a7a');
+    box(g, 52, 32, 126, 15, 2, '#1e4a8a', K, 1.2);
+    let px = 11; while (textW(name, px) > 116 && px > 7) px -= 0.5;
+    label(g, name, 115, 39.8, px, '#ffffff');
+  }];
+  // Eminönü'nün süslü balık-ekmek teknesi
+  OBJ.balikekmek = [150, 96, (g) => {
+    LW = 1.8;
+    ell(g, 75, 92, 70, 3, 'rgba(255,255,255,0.4)', null);
+    g.beginPath(); g.moveTo(2, 58); g.lineTo(148, 58); g.quadraticCurveTo(142, 80, 126, 88); g.lineTo(24, 88); g.quadraticCurveTo(8, 80, 2, 58); g.closePath(); F(g, '#b8262a');
+    rect(g, 4, 62, 142, 5, '#e8b030');
+    for (let x = 14; x < 140; x += 14) circ(g, x, 76, 3.4, '#e8b030', K, 0.9);
+    box(g, 20, 30, 110, 30, 2, '#e8d4a0');
+    for (let x = 26; x < 126; x += 18) archWin(g, x, 34, 10, 20, '#6a2a1a', K);
+    poly(g, [12, 32, 138, 32, 124, 18, 26, 18], '#b8262a');
+    for (let x = 30; x < 122; x += 10) poly(g, [x, 32, x + 10, 32, x + 5, 38], '#e8b030', null);
+    box(g, 36, 4, 78, 15, 2, '#1c1626');
+    label(g, 'BALIK EKMEK', 75, 11.8, 9, '#ffd27a');
+    for (const [x, y, r0] of [[116, 12, 5], [122, 4, 6], [128, -4, 7]]) circ(g, x, y, r0, 'rgba(240,240,240,0.7)', null);
+  }];
+  // Mısır Çarşısı: uzun taş yapı, kemerli kapı, kubbecikler
+  OBJ.misir_carsisi = [300, 150, (g) => {
+    LW = 1.8;
+    const st = '#d4c09c', sh = '#a8946e';
+    box(g, 4, 56, 292, 94, 1, lgrad(g, 0, 56, 0, 150, [[0, shade(st, 0.08)], [1, sh]]));
+    g.save(); rr(g, 4, 56, 292, 94, 1); g.clip();
+    g.strokeStyle = 'rgba(110,90,60,0.3)'; g.lineWidth = 0.7;
+    for (let y = 62; y < 150; y += 6) { g.beginPath(); g.moveTo(4, y); g.lineTo(296, y); g.stroke(); }
+    g.restore(); box(g, 4, 56, 292, 94, 1, null);
+    for (let x = 14; x < 290; x += 22) if (Math.abs(x + 6 - 150) > 30) archWin(g, x, 74, 12, 26, '#4a3a2a', K);
+    for (let x = 20; x < 290; x += 34) { g.beginPath(); g.ellipse(x, 57, 12, 10, 0, Math.PI, 0); g.closePath(); F(g, '#8794a8'); }
+    // ana kapı
+    box(g, 116, 26, 68, 124, 1, st);
+    archWin(g, 128, 64, 44, 86, '#3a2c24', K);
+    box(g, 112, 20, 76, 8, 1.4, sh);
+    g.beginPath(); g.ellipse(150, 21, 22, 18, 0, Math.PI, 0); g.closePath(); F(g, '#8794a8');
+    line(g, 150, 3, 150, -4, '#c8a020', 1.4);
+    box(g, 132, 32, 36, 12, 2, '#1e4a8a', K, 1); label(g, 'ÇARŞI', 150, 38.4, 7, '#ffffff');
+  }];
+  // Ortaköy kumpir büfesi
+  OBJ.kumpir = [76, 84, (g) => {
+    LW = 1.6;
+    box(g, 6, 40, 64, 44, 3, '#f4f0e6');
+    box(g, 10, 46, 56, 18, 2, 'rgba(200,230,250,0.7)', K, 1.1);
+    for (let k = 0; k < 4; k++) ell(g, 18 + k * 13, 57, 5.4, 4, '#c8945a', K, 0.9);
+    box(g, 2, 26, 72, 16, 3, '#e8b030');
+    g.save(); rr(g, 2, 26, 72, 16, 3); g.clip(); for (let x = 2; x < 76; x += 10) rect(g, x, 26, 5, 16, '#d8342a'); g.restore(); rr(g, 2, 26, 72, 16, 3); F(g, null);
+    box(g, 12, 6, 52, 18, 3, '#1c1626');
+    label(g, 'KUMPİR', 38, 15.4, 10, '#ffd27a');
+    rect(g, 6, 68, 64, 4, '#d8342a');
+  }];
+  // Dolmabahçe Saat Kulesi
+  OBJ.saat_kulesi = [60, 210, (g) => {
+    LW = 1.8;
+    const st = '#f2ece0', sh = '#cfc6b4';
+    box(g, 10, 120, 40, 90, 1, st); rect(g, 40, 121, 9, 88, sh);
+    archWin(g, 22, 160, 16, 34, '#5a6a8a', K);
+    box(g, 6, 112, 48, 9, 1.4, sh);
+    box(g, 14, 64, 32, 50, 1, st); rect(g, 38, 65, 7, 48, sh);
+    circ(g, 30, 88, 10, '#fbfbf6', K, 1.4); line(g, 30, 88, 30, 81, K, 1.2); line(g, 30, 88, 35, 90, K, 1.2);
+    box(g, 10, 58, 40, 7, 1.4, sh);
+    box(g, 18, 30, 24, 30, 1, st);
+    for (const x of [22, 32]) archWin(g, x, 36, 6, 16, '#5a6a8a');
+    g.beginPath(); g.ellipse(30, 31, 14, 14, 0, Math.PI, 0); g.closePath(); F(g, '#8794a8');
+    line(g, 30, 17, 30, 6, '#c8a020', 1.6);
+  }];
+  // Galataport önünde kruvaziyer gemisi
+  OBJ.kruvaziyer = [440, 140, (g) => {
+    LW = 2;
+    ell(g, 220, 136, 210, 4, 'rgba(255,255,255,0.4)', null);
+    g.beginPath(); g.moveTo(0, 90); g.lineTo(440, 90); g.quadraticCurveTo(432, 116, 410, 130); g.lineTo(24, 130); g.quadraticCurveTo(6, 116, 0, 90); g.closePath(); F(g, '#1e3a6a');
+    rect(g, 2, 92, 436, 8, '#ffffff');
+    for (let k = 0; k < 5; k++) { const y = 26 + k * 13, inset = 30 + (4 - k) * 0; box(g, inset + k * 6, y, 380 - k * 12, 14, 2, '#fbfbfb'); for (let x = inset + k * 6 + 8; x < 400 - k * 6; x += 9) rect(g, x, y + 4, 5, 5, '#3e5476'); }
+    box(g, 300, 4, 34, 24, 3, '#e8e8ec');
+    rect(g, 300, 8, 34, 6, '#c8302a');
+    for (let x = 40; x < 400; x += 26) circ(g, x, 112, 3, '#ffd27a', null);
+  }];
+  // T1 tramvayı (arkadan)
+  function tramvay() {
+    return mk(110, 104, (g) => {
+      LW = 1.7;
+      line(g, 40, 2, 70, 14, '#3a3a44', 1.6); line(g, 70, 2, 40, 14, '#3a3a44', 1.6); box(g, 38, 13, 34, 4, 1, '#3a3a44');
+      for (const x of [10, 82]) box(g, x, 94, 18, 9, 3, '#26222c');
+      box(g, 4, 16, 102, 82, 14, '#f4f4f0');
+      g.save(); rr(g, 4, 16, 102, 82, 14); g.clip();
+      rect(g, 4, 70, 102, 10, '#d8282a'); rect(g, 4, 82, 102, 16, '#3a3e48');
+      g.restore(); rr(g, 4, 16, 102, 82, 14); F(g, null);
+      box(g, 12, 32, 86, 32, 8, lgrad(g, 0, 32, 0, 64, [[0, '#4a628a'], [1, '#22304a']]), K, 1.2);
+      poly(g, [22, 62, 30, 62, 44, 34, 36, 34], 'rgba(255,255,255,0.25)', null);
+      box(g, 26, 20, 58, 10, 2, '#141018', K, 1.1); label(g, 'T1 KABATAŞ', 55, 25.4, 6.4, '#ffb030');
+      for (const x of [8, 90]) box(g, x, 72, 12, 7, 2.4, '#ffd060', K, 1);
+    });
+  }
+
   // ---------------- gün saatleri ----------------
   // 0 sabah, 1 öğle, 2 ikindi, 3 gün batımı
   const TIMES = [
@@ -893,13 +1149,16 @@
     if (k === 'apartman') { const v = (sp.v || 0) % 7; return ['apt:' + v, [128, 168, (g) => apartman(g, v)]]; }
     if (k === 'levha') return ['levha:' + sp.label.join('|'), levhaDef(sp.label)];
     if (k === 'tunel_levha') return ['tl:' + (sp.v || 0), tunelLevha(sp.v || 0)];
+    if (VAR[k]) { const [w, h, n, fn] = VAR[k], v = (sp.v || 0) % n; return ['v:' + k + ':' + v, [w, h, (g) => fn(g, v)]]; }
+    if (LBL[k]) return ['l:' + k + ':' + sp.label, LBL[k](sp.label)];
     if (OBJ[k]) return ['o:' + k, OBJ[k]];
     return ['o:?', [8, 8, (g) => rect(g, 0, 0, 8, 8, '#f0f')]];
   }
   const defCache = new Map();
   function sprite(k, sp, needPx) {
     const dk = k === 'tabela' ? 'tabela:' + sp.label : k === 'ayrim' ? 'ayrim:' + sp.label.join('|') : k === 'apartman' ? 'apt:' + ((sp.v || 0) % 7)
-      : k === 'levha' ? 'levha:' + sp.label.join('|') : k === 'tunel_levha' ? 'tl:' + (sp.v || 0) : 'o:' + k;
+      : k === 'levha' ? 'levha:' + sp.label.join('|') : k === 'tunel_levha' ? 'tl:' + (sp.v || 0)
+      : VAR[k] ? 'v:' + k + ':' + ((sp.v || 0) % VAR[k][2]) : LBL[k] ? 'l:' + k + ':' + sp.label : 'o:' + k;
     let d = defCache.get(dk);
     if (!d) { d = defOf(k, sp)[1]; defCache.set(dk, d); }
     const [w, h, fn] = d;
@@ -907,7 +1166,7 @@
     return getLod(dk + '@' + L, w, h, Math.pow(2, L), fn);
   }
   const CAR_DEF = {
-    taksi: [72, 44, () => sedan(0, true)], dolmus: [84, 64, dolmus], otobus: [116, 96, otobus], kamyon: [108, 88, kamyon], motor: [32, 48, motor], metrobus: [120, 100, metrobus],
+    taksi: [72, 44, () => sedan(0, true)], dolmus: [84, 64, dolmus], otobus: [116, 96, otobus], kamyon: [108, 88, kamyon], motor: [32, 48, motor], metrobus: [120, 100, metrobus], tramvay: [110, 104, tramvay],
   };
   // araç çizimleri kendi tuvalini kurar; istenen ölçekte kurulsun diye S geçici olarak değiştirilir
   function withScale(s, fn) { const old = S; S = s; try { return fn(); } finally { S = old; } }
@@ -920,6 +1179,7 @@
         case 'kamyon': return kamyon();
         case 'motor': return motor();
         case 'metrobus': return metrobus();
+        case 'tramvay': return tramvay();
         default: return sedan(color, false);
       }
     });
@@ -944,8 +1204,9 @@
     poly(g, [x - w / 2, by - h + w * 3, x + w / 2, by - h + w * 3, x, by - h], col, null);
   }
   function domeShape(g, cx, by, r, col) { g.beginPath(); g.ellipse(cx, by, r, r * 0.9, 0, Math.PI, 0); g.closePath(); g.fillStyle = col; g.fill(); }
-  function panorama(time, seed) {
-    return getScaled('pan:' + time + ':' + seed, () => {
+  // style 'towers': ufukta gökdelen kümeleri (Anadolu yakasından Avrupa'ya ya da Ataşehir'e bakış)
+  function panorama(time, seed, style) {
+    return getScaled('pan:' + time + ':' + seed + ':' + (style || ''), () => {
       const T = TIMES[time], r = rng(seed * 97 + 13);
       const W = 1024, H = 72;
       return mk(W, H, (g) => {
@@ -969,8 +1230,20 @@
           if (T.lights) for (let k = 0; k < w * h / 16; k++) if (r() < T.lights) rect(g, x + 1 + r() * (w - 2), H - h + 1.5 + r() * (h - 2), 0.8, 0.8, r() < 0.5 ? '#ffd27a' : '#fff0b0');
           x += w + r() * 2.4;
         }
+        // gökdelen kümeleri
+        if (style === 'towers') {
+          const tc = mix(T.shore, T.shore2, 0.35), lit = T.lights;
+          for (const cx0 of [150, 520, 860]) {
+            for (let k = 0; k < 9; k++) {
+              const w = 4 + r() * 6, h = 24 + r() * 32 * (1 - Math.abs(k - 4) / 6), x = cx0 + (k - 4) * 9 + r() * 4;
+              rect(g, x, H - 6 - h, w, h + 6, tc);
+              if (r() < 0.4) poly(g, [x, H - 6 - h, x + w, H - 6 - h, x + w / 2, H - 12 - h], tc, null);
+              if (lit) for (let q = 0; q < h / 4; q++) if (r() < lit * 0.8) rect(g, x + 1 + r() * (w - 2), H - 4 - h + r() * h, 0.8, 0.8, '#ffe0a0');
+            }
+          }
+        }
         // camiler ve servi ağaçları
-        for (let k = 0; k < 6; k++) {
+        for (let k = 0; k < (style === 'towers' ? 3 : 6); k++) {
           const cx = 40 + r() * (W - 80), base = H - 8, rd = 7 + r() * 6;
           rect(g, cx - rd - 4, base - 10, rd * 2 + 8, 10, T.shore);
           domeShape(g, cx, base - 9.5, rd, T.shore);
@@ -1008,8 +1281,10 @@
     kopru_kule: 2.95, kopru_uzak: 18, basla: 2.6, kontrol: 2.6, bitis: 2.6, aski: 0.03,
     sur: 2.8, ayasofya: 8, sultanahmet: 8.5, galata_kulesi: 2.2, camlica_kulesi: 3.4, camlica_camii: 7, bariyer: 0.55, otoyol_lamba: 0.24,
     levha: 3.6, ustgecit: 5.2, tunel_agzi: 12, tunel_levha: 0.64,
+    ahsap_ev: 2.2, han: 2.6, tas_bina: 2.5, site: 3.2, rezidans: 2.2, plaza: 2.6, reklam: 2.6, iskele: 4.4, balikekmek: 2.2,
+    misir_carsisi: 6.5, kumpir: 0.9, saat_kulesi: 1.3, kruvaziyer: 10,
   };
-  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2, metrobus: 0.74 };
+  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2, metrobus: 0.74, tramvay: 0.72 };
 
   function setScale(s) { if (Math.abs(s - S) < 1e-6) return; S = s; scaled.clear(); }
   function clearAll() { scaled.clear(); lod.clear(); lodPx = 0; defCache.clear(); }

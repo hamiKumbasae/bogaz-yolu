@@ -48,6 +48,12 @@ Yol ayrımı yoktur; 7 etabı sırayla sürersin:
 7. **Avrasya Tüneli – Kennedy Caddesi:** denizin altından Kazlıçeşme'ye, gün batımında surların yanından
    **Cankurtaran'da bitiş**
 
+Her semtin kendi dokusu var: Sultanahmet'te surların üstünden görünen ahşap konaklar; Eminönü'nde taş hanlar
+(kuruyemişçi, baharatçı, lokumcu), Mısır Çarşısı, iskele ve balık-ekmek tekneleri; Eminönü'nden Karaköy'e kadar
+yanında T1 tramvayı akan yol; Karaköy'de taş binalar, kafeler ve kruvaziyer gemisi; Ortaköy'de ahşap evler ve
+kumpirciler; Üsküdar'da renkli ahşap evler ve çay bahçeleri; Şile Otoyolu ve E-5'te siteler, rezidanslar, plazalar ve
+reklam panoları, ufukta gökdelenler.
+
 Rekorlar her mod için ayrı tutulur.
 
 ## Kurallar

@@ -19,13 +19,14 @@
   const EXTEND = [0, 62, 64, 66]; // katmana göre eklenen süre
   // mod başına süre: başlangıç süresi, etap süresinin en yüksek hızda geçiş süresine oranı ve eki.
   // Turun virajları daha yumuşak, trafiği daha seyrek: aynı yol daha kısa sürede alınır.
-  const TIMING = { bogaz: { start: START_TIME, k: 1.15, add: 8 }, tur: { start: 62, k: 1.0, add: 7 } };
+  const TIMING = { bogaz: { start: START_TIME, k: 1.15, add: 8 }, tur: { start: 62, k: 1.0, add: 8 } };
   const CRASH_TIME = 1.8;
 
   // nesnelerin çarpışma genişliği (yarı yol genişliği cinsinden); listede olmayanlar çarpışmaz
   const HIT = {
     lamba: 0.14, cinar: 0.5, agac: 0.45, servi: 0.25, apartman: 1.5, yali: 1.4, durak: 0.6, simitci: 0.4, semsiye: 0.5,
     tabela: 0.16, ayrim: 0.5, cami: 2.2, hisar: 1.0, kale: 1.6, saray: 2.5, sur: 2.0, galata_kulesi: 1.3,
+    ahsap_ev: 1.7, han: 2.0, tas_bina: 2.0, kumpir: 0.6,
   };
   // trafik araçları: genişlik (yarı yol cinsinden), boy (segment), hız aralığı (en yüksek hıza oran)
   const CARS = {
@@ -83,7 +84,7 @@
       G.track.push(s);
     }
     const info = { idx, start, end: G.track.length, bodyEnd: start + st.bodyEnd, forkStart: st.forkStart >= 0 ? start + st.forkStart : -1, lockAt: st.lockAt >= 0 ? start + st.lockAt : -1, final: st.final, linear: st.linear, gate: start + 10,
-      parts: st.parts.map((p) => ({ sea: p.sea, land: p.land, start: start + p.start, end: start + p.end })) };
+      parts: st.parts.map((p) => ({ sea: p.sea, land: p.land, tram: p.tram, start: start + p.start, end: start + p.end })) };
     G.stages.push(info);
     G.route.push(idx);
     return info;
@@ -106,8 +107,8 @@
     const lo = Math.min(...roads), hi = Math.max(...roads);
     const wall = 1.05 * RW, far = 4.5 * RW;
     let L = lo - far, R = hi + far;
-    if (wallR(s.sea)) R = hi + wall;
-    if (wallL(s.sea)) L = lo - wall;
+    if (wallR(s.sea) || s.tram) R = hi + wall;
+    if (wallL(s.sea) || s.tram) L = lo - wall;
     return [L, R];
   }
 

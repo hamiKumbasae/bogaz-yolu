@@ -8,6 +8,7 @@
   const LANES = 3;
   const TUN_H = 3400;       // tünel tavanının yoldan yüksekliği
   const TUN_D = 2400;       // tünelin denizin altına inişi
+  const TRAM_W = 1.25;      // tramvay yolunun genişliği (yarı yol genişliği cinsinden)
 
   // Bir etap bir ya da birkaç bölümden (parts) oluşur. Bölümün "sea" alanı yolun iki yanını belirler:
   //   R deniz sağda, L deniz solda, B asma köprü (iki yanda aşağıda deniz), G alçak köprü (Galata, iki yanda deniz),
@@ -55,53 +56,69 @@
   // ---------------- İstanbul Turu: Cankurtaran'dan başlayıp Cankurtaran'da biten tek yol ----------------
   // Sahilden Haliç'e, Galata Köprüsü'nden Karaköy'e, Ortaköy'den 1. Köprü ile Anadolu'ya; Üsküdar, Şile Otoyolu ve
   // E-5'ten sonra Avrasya Tüneli ile denizin altından Avrupa'ya dönüp Kennedy Caddesi'nden Cankurtaran'a.
+  // Her bölüm kendi semtinin dokusuyla döşenir (style: true):
+  //   bldg ön sıra yapıları, back arka sıra, near yol kenarındaki küçük şeyler, behind surların arkası,
+  //   tram: kara tarafında T1 tramvay yolu (Galata Köprüsü'nde solda).
   const TUR = [
     { id: 'cankurtaran', name: 'Cankurtaran – Sirkeci', short: 'SİRKECİ', sign: 'CANKURTARAN', time: 0, curv: 0.4, hills: 0.1, traffic: 0.8,
       parts: [
-        { len: 2300, sea: 'R', land: 'park', sur: true, landItems: ['cinar', 'agac', 'servi', 'cinar'], seaItems: ['vapur', 'tekne', 'balikci', 'balikci', 'vapur'] },
+        { len: 2300, sea: 'R', land: 'park', style: true, sur: true, behind: ['ahsap_ev', 'cinar', 'ahsap_ev', 'servi', 'ahsap_ev'],
+          seaItems: ['vapur', 'tekne', 'balikci', 'balikci', 'vapur'] },
       ],
       marks: [
-        { p: 0, at: 0.12, k: 'sultanahmet', side: 'land', x: 7, clear: 200 },
-        { p: 0, at: 0.3, k: 'ayasofya', side: 'land', x: 6.6, clear: 200 },
+        { p: 0, at: 0.12, k: 'sultanahmet', side: 'land', x: 7, clear: 110 },
+        { p: 0, at: 0.3, k: 'ayasofya', side: 'land', x: 6.6, clear: 110 },
         { p: 0, at: 0.62, k: 'kiz_kulesi', side: 'sea', x: 9 },
       ],
       signs: [{ p: 0, at: 0.5, text: 'SARAYBURNU' }] },
 
     { id: 'galata', name: 'Eminönü – Galata Köprüsü – Karaköy', short: 'KARAKÖY', sign: 'EMİNÖNÜ', time: 0, curv: 0.4, hills: 0.15, traffic: 0.9,
       parts: [
-        { len: 750, sea: 'R', land: 'city', curv: 0.3, landItems: ['simitci', 'durak', 'apartman', 'lamba', 'simitci', 'apartman'], seaItems: ['vapur', 'vapur', 'tekne', 'balikci'] },
-        { len: 850, sea: 'G', land: 'bridge', kind: 'low' },
-        { len: 850, sea: 'R', land: 'city', landItems: ['apartman', 'lamba', 'durak', 'cinar', 'apartman', 'simitci'], seaItems: ['vapur', 'tekne', 'balikci'] },
+        { len: 750, sea: 'R', land: 'city', curv: 0.3, style: true, tram: true, bldg: ['han'], back: ['han', 'han', 'apartman'], near: ['simitci', 'simitci', 'durak'],
+          seaItems: ['balikekmek', 'vapur', 'balikekmek', 'tekne', 'balikekmek'] },
+        { len: 850, sea: 'G', land: 'bridge', kind: 'low', tram: true },
+        { len: 850, sea: 'R', land: 'city', style: true, tram: true, bldg: ['tas_bina'], back: ['tas_bina', 'tas_bina', 'apartman'], near: ['durak', 'simitci', 'semsiye'],
+          seaItems: ['tekne', 'vapur', 'balikci'] },
       ],
       marks: [
-        { p: 0, at: 0.45, k: 'cami', side: 'land', x: 2.8, clear: 90 },
-        { p: 2, at: 0.14, k: 'galata_kulesi', side: 'land', x: 4.4, clear: 80 },
+        { p: 0, at: 0.2, k: 'iskele', side: 'sea', x: 3.2, label: 'EMİNÖNÜ' },
+        { p: 0, at: 0.32, k: 'misir_carsisi', side: 'land', x: 5.6, clear: 70 },
+        { p: 0, at: 0.55, k: 'cami', side: 'land', x: 4.2, clear: 90 },
+        { p: 2, at: 0.14, k: 'galata_kulesi', side: 'land', x: 5.4, clear: 75 },
+        { p: 2, at: 0.3, k: 'iskele', side: 'sea', x: 3.2, label: 'KARAKÖY' },
+        { p: 2, at: 0.62, k: 'kruvaziyer', side: 'sea', x: 9, clear: 60 },
       ],
-      signs: [{ p: 0, at: 0.85, text: 'GALATA KÖPRÜSÜ' }, { p: 2, at: 0.6, text: 'TOPHANE' }] },
+      signs: [{ p: 0, at: 0.85, text: 'GALATA KÖPRÜSÜ' }, { p: 2, at: 0.82, text: 'TOPHANE' }] },
 
-    { id: 'ortakoy2', name: 'Kabataş – Beşiktaş – Ortaköy', short: 'ORTAKÖY', sign: 'KABATAŞ', time: 1, curv: 0.5, hills: 0.2, traffic: 1.0,
+    { id: 'ortakoy2', name: 'Kabataş – Beşiktaş – Ortaköy', short: 'ORTAKÖY', sign: 'KABATAŞ', time: 1, curv: 0.42, hills: 0.2, traffic: 1.0,
       parts: [
-        { len: 2400, sea: 'R', land: 'city', landItems: ['apartman', 'cinar', 'lamba', 'durak', 'apartman', 'semsiye'], seaItems: ['tekne', 'vapur', 'balikci', 'tekne'] },
+        { len: 760, sea: 'R', land: 'city', style: true, bldg: ['tas_bina', 'apartman'], back: ['apartman', 'tas_bina'], near: ['durak', 'cinar', 'simitci'], seaItems: ['tekne', 'vapur'] },
+        { len: 620, sea: 'R', land: 'city', style: true, bldg: ['apartman', 'han', 'apartman'], back: ['apartman'], near: ['simitci', 'durak', 'semsiye'], seaItems: ['vapur', 'tekne', 'balikci'] },
+        { len: 840, sea: 'R', land: 'city', style: true, bldg: ['ahsap_ev'], back: ['ahsap_ev', 'cinar'], near: ['kumpir', 'kumpir', 'semsiye', 'simitci'], seaItems: ['tekne', 'balikci', 'vapur'] },
       ],
       marks: [
-        { p: 0, at: 0.25, k: 'saray', side: 'sea', x: 2.7, clear: 140 },
-        { p: 0, at: 0.8, k: 'cami', side: 'sea', x: 2.4 },
-        { p: 0, at: 0.84, k: 'kopru_uzak', side: 'sea', x: 7 },
+        { p: 0, at: 0.12, k: 'iskele', side: 'sea', x: 3.2, label: 'KABATAŞ' },
+        { p: 0, at: 0.62, k: 'saat_kulesi', side: 'sea', x: 2.2, clear: 120 },
+        { p: 0, at: 0.75, k: 'saray', side: 'sea', x: 2.9, clear: 60 },
+        { p: 1, at: 0.4, k: 'iskele', side: 'sea', x: 3.2, label: 'BEŞİKTAŞ' },
+        { p: 2, at: 0.75, k: 'cami', side: 'sea', x: 2.4 },
+        { p: 2, at: 0.8, k: 'kopru_uzak', side: 'sea', x: 7 },
       ],
-      signs: [{ p: 0, at: 0.5, text: 'BEŞİKTAŞ' }] },
+      signs: [{ p: 1, at: 0.1, text: 'BEŞİKTAŞ' }, { p: 2, at: 0.08, text: 'ORTAKÖY' }] },
 
     { id: 'kopru1', name: '15 Temmuz Şehitler Köprüsü', short: '1. KÖPRÜ', sign: '1. KÖPRÜ', time: 1, curv: 0.25, hills: 0.5, traffic: 1.15,
       parts: [{ len: 2400, sea: 'B', land: 'bridge' }],
       marks: [] },
 
-    { id: 'sile', name: 'Üsküdar – Şile Otoyolu', short: 'ŞİLE OTOYOLU', sign: 'ÜSKÜDAR', time: 2, curv: 0.45, hills: 0.4, traffic: 1.0,
+    { id: 'sile', name: 'Üsküdar – Şile Otoyolu', short: 'ŞİLE OTOYOLU', sign: 'ÜSKÜDAR', time: 2, curv: 0.45, hills: 0.4, traffic: 1.0, pano: 'towers',
       parts: [
-        { len: 850, sea: 'R', land: 'city', landItems: ['apartman', 'cinar', 'lamba', 'servi', 'simitci', 'apartman'], seaItems: ['tekne', 'vapur', 'balikci'] },
-        { len: 1650, sea: 'N', land: 'hwy', curv: 0.45, hills: 0.6, landItems: ['agac', 'servi', 'agac', 'apartman', 'cinar'] },
+        { len: 850, sea: 'R', land: 'city', style: true, bldg: ['ahsap_ev'], back: ['ahsap_ev', 'servi', 'ahsap_ev'], near: ['semsiye', 'semsiye', 'simitci', 'cinar'], seaItems: ['vapur', 'tekne', 'balikci'] },
+        { len: 1650, sea: 'N', land: 'hwy', curv: 0.45, hills: 0.6, style: true, landItems: ['site', 'agac', 'site', 'rezidans', 'servi', 'agac'] },
       ],
       marks: [
-        { p: 0, at: 0.2, k: 'cami', side: 'land', x: 2.6 },
-        { p: 0, at: 0.55, k: 'kiz_kulesi', side: 'sea', x: 5.5 },
+        { p: 0, at: 0.2, k: 'cami', side: 'land', x: 2.8, clear: 60 },
+        { p: 0, at: 0.4, k: 'iskele', side: 'sea', x: 3.2, label: 'ÜSKÜDAR' },
+        { p: 0, at: 0.62, k: 'kiz_kulesi', side: 'sea', x: 5.5 },
         { p: 1, at: 0.2, k: 'levha', side: 'right', x: 0, label: ['ÇAMLICA>ur', 'ŞİLE>u'] },
         { p: 1, at: 0.42, k: 'camlica_camii', side: 'right', x: 9, clear: 260 },
         { p: 1, at: 0.445, k: 'camlica_kulesi', side: 'right', x: 14, clear: 260 },
@@ -109,9 +126,9 @@
       ],
       signs: [{ p: 1, at: 0.06, text: 'ŞİLE OTOYOLU' }, { p: 1, at: 0.62, text: 'ÜMRANİYE' }] },
 
-    { id: 'e5', name: 'E-5 (D-100)', short: 'E-5', sign: 'E-5', time: 2, curv: 0.35, hills: 0.3, traffic: 1.2,
+    { id: 'e5', name: 'E-5 (D-100)', short: 'E-5', sign: 'E-5', time: 2, curv: 0.35, hills: 0.3, traffic: 1.2, pano: 'towers',
       parts: [
-        { len: 2400, sea: 'N', land: 'e5', landItems: ['apartman', 'agac', 'apartman', 'servi', 'cinar'] },
+        { len: 2400, sea: 'N', land: 'e5', style: true, landItems: ['plaza', 'site', 'rezidans', 'apartman', 'agac', 'plaza'] },
       ],
       marks: [
         { p: 0, at: 0.12, k: 'ustgecit', side: 'right', x: -0.6 },
@@ -124,14 +141,14 @@
 
     { id: 'avrasya', name: 'Avrasya Tüneli – Kennedy Caddesi', short: 'CANKURTARAN', sign: 'AVRASYA TÜNELİ', time: 3, curv: 0.4, hills: 0.15, traffic: 1.05, ending: 'tur',
       parts: [
-        { len: 320, sea: 'N', land: 'hwy', curv: 0.2, hills: 0, landItems: ['agac', 'servi', 'apartman'] },
+        { len: 320, sea: 'N', land: 'hwy', curv: 0.2, hills: 0, style: true, landItems: ['site', 'agac', 'servi'] },
         { len: 1100, sea: 'T', land: 'tunnel', kind: 'tunnel' },
-        { len: 1500, sea: 'R', land: 'park', sur: true, landItems: ['cinar', 'agac', 'servi', 'cinar'], seaItems: ['vapur', 'tekne', 'balikci', 'vapur'] },
+        { len: 1500, sea: 'R', land: 'park', style: true, sur: true, behind: ['ahsap_ev', 'cinar', 'ahsap_ev', 'servi'], seaItems: ['vapur', 'tekne', 'balikci', 'vapur'] },
       ],
       marks: [
         { p: 0, at: 0.3, k: 'levha', side: 'right', x: 0, label: ['AVRUPA YAKASI>u', 'AVRASYA TÜNELİ>u'] },
-        { p: 2, at: 0.55, k: 'sultanahmet', side: 'land', x: 7, clear: 200 },
-        { p: 2, at: 0.72, k: 'ayasofya', side: 'land', x: 6.6, clear: 200 },
+        { p: 2, at: 0.55, k: 'sultanahmet', side: 'land', x: 7, clear: 110 },
+        { p: 2, at: 0.72, k: 'ayasofya', side: 'land', x: 6.6, clear: 110 },
       ],
       signs: [{ p: 2, at: 0.08, text: 'KAZLIÇEŞME' }, { p: 2, at: 0.35, text: 'YENİKAPI' }] },
   ];
@@ -263,6 +280,9 @@
 
     // --- yol kenarı ---
     const pick = (arr) => arr[Math.floor(r() * arr.length)];
+    // deniz tarafı ve otoyol kenarı için uzaklıklar (yarı yol genişliği cinsinden)
+    const SEA_X = { balikci: () => 1.22, vapur: () => 7 + r() * 8, tekne: () => 3 + r() * 6, balikekmek: () => 2.7 + r() * 0.7, yali: () => 2.3 + r() * 0.6 };
+    const HWY_X = { site: () => 3.3 + r() * 1.4, rezidans: () => 3.5 + r() * 2.4, plaza: () => 3.3 + r() * 1.6, apartman: () => 3 + r() * 1.6 };
     let pk = 0;
     for (let i = 0; i < bodyEnd; i++) {
       while (i >= ranges[pk].end) pk++;
@@ -284,13 +304,17 @@
         continue;
       }
       if (P.sea === 'G') {
-        // Galata Köprüsü: iki yanda korkuluk, oltalarını Haliç'e sarkıtan balıkçılar, fenerler, vapurlar
-        if (li % 4 === 0) { s.sprites.push({ k: 'korkuluk', x: -1.28 }); s.sprites.push({ k: 'korkuluk', x: 1.28 }); }
-        if (li % 30 === 15) { s.sprites.push({ k: 'lamba', x: 1.32, flip: true, nohit: true }); s.sprites.push({ k: 'lamba', x: -1.32, nohit: true }); }
+        // Galata Köprüsü: iki yanda korkuluk, oltalarını Haliç'e sarkıtan balıkçılar, fenerler, vapurlar;
+        // tramvay yolu solda (sol korkuluk ve balıkçılar onun dışında)
+        const tr = P.tram ? TRAM_W : 0;
+        if (P.tram) s.tram = -1;
+        if (li % 4 === 0) { s.sprites.push({ k: 'korkuluk', x: -1.28 - tr }); s.sprites.push({ k: 'korkuluk', x: 1.28 }); }
+        if (li % 30 === 15) { s.sprites.push({ k: 'lamba', x: 1.32, flip: true, nohit: true }); s.sprites.push({ k: 'lamba', x: -1.32 - tr, nohit: true }); }
+        if (tr && li % 30 === 0) s.sprites.push({ k: 'lamba', x: -1.16, nohit: true });
         if (li % 5 === 1 && r() < 0.55) s.sprites.push({ k: 'balikci', x: 1.22, nohit: true });
-        if (li % 5 === 3 && r() < 0.55) s.sprites.push({ k: 'balikci', x: -1.22, flip: true, nohit: true });
-        if (li % 160 === 80) s.sprites.push({ k: 'vapur', x: (r() < 0.5 ? -1 : 1) * (7 + r() * 6), flip: r() < 0.5, nohit: true });
-        if (li % 60 === 30) s.sprites.push({ k: 'tekne', x: (r() < 0.5 ? -1 : 1) * (3.5 + r() * 6), flip: r() < 0.5, nohit: true });
+        if (li % 5 === 3 && r() < 0.55) s.sprites.push({ k: 'balikci', x: -1.22 - tr, flip: true, nohit: true });
+        if (li % 160 === 80) { const sd = r() < 0.5 ? -1 : 1; s.sprites.push({ k: 'vapur', x: sd * (7 + r() * 6 + (sd < 0 ? tr : 0)), flip: r() < 0.5, nohit: true }); }
+        if (li % 60 === 30) { const sd = r() < 0.5 ? -1 : 1; s.sprites.push({ k: 'tekne', x: sd * (3.5 + r() * 6 + (sd < 0 ? tr : 0)), flip: r() < 0.5, nohit: true }); }
         continue;
       }
       if (P.sea === 'N') {
@@ -304,14 +328,16 @@
         if (li % 9 === 0 && P.landItems.length && r() < 0.8) {
           const k = pick(P.landItems);
           const side = e5 ? 1 : (r() < 0.5 ? -1 : 1);
-          const x = k === 'apartman' ? 3 + r() * 1.6 : 1.9 + r() * 2.4;
-          s.sprites.push({ k, x: side * x, flip: r() < 0.5, v: i, nohit: true });
+          const x = HWY_X[k] ? HWY_X[k]() : 1.9 + r() * 2.4;
+          s.sprites.push({ k, x: side * x, flip: r() < 0.5, v: Math.floor(r() * 6), nohit: true });
         }
         if (li % 9 === 4 && r() < 0.55) {
           const side = e5 ? (r() < 0.5 ? -1 : 1) : (r() < 0.5 ? -1 : 1);
-          const k = e5 && side < 0 ? 'apartman' : pick(['agac', 'servi', 'cinar']);
-          s.sprites.push({ k, x: side * (e5 && side < 0 ? 3.6 + r() * 1.2 : 4 + r() * 3), flip: r() < 0.5, v: i + 3, nohit: true });
+          const k = e5 && side < 0 ? pick(['site', 'apartman']) : pick(['agac', 'servi', 'cinar']);
+          s.sprites.push({ k, x: side * (e5 && side < 0 ? 3.7 + r() * 1.2 : 4 + r() * 3), flip: r() < 0.5, v: Math.floor(r() * 6), nohit: true });
         }
+        // reklam panoları
+        if (P.style && li % 150 === 75) s.sprites.push({ k: 'reklam', x: (e5 || li % 300 === 75 ? 1 : -1) * 2.35, v: Math.floor(li / 150) % 5, nohit: true });
         continue;
       }
       if (P.sea === 'T') {
@@ -329,9 +355,27 @@
           const x = k === 'balikci' ? 1.22 : k === 'vapur' ? 7 + r() * 8 : 3 + r() * 6;
           s.sprites.push({ k, x: sideSign * x, flip: k === 'balikci' ? sideSign < 0 : r() < 0.5, nohit: true });
         }
+        // surların arkasındaki yamaçta ahşap evler ve ağaçlar (aynı segmentte surdan önce çizilir)
+        if (i % 8 === 4 && r() < 0.8) { const k = pick(P.behind); s.sprites.push({ k, x: -sideSign * (k === 'ahsap_ev' ? 3.8 + r() * 0.8 : 4.2 + r() * 2), flip: r() < 0.5, v: Math.floor(r() * 6) }); }
         if (i % 7 === 0) s.sprites.push({ k: 'sur', x: -sideSign * 2.5, flip: (i / 7) % 3 === 1, v: i % 3 });
         if (i % 24 === 0) s.sprites.push({ k: 'lamba', x: -sideSign * 1.2, flip: sideSign < 0 });
-        if (i % 9 === 4 && r() < 0.7) s.sprites.push({ k: pick(P.landItems), x: -sideSign * (4.2 + r() * 2.5), flip: r() < 0.5 });
+        continue;
+      }
+      if (P.style) {
+        // semtin dokusu: ön sırada semt yapıları, yol kenarında semtin küçük şeyleri, deniz tarafında iskeleler ve tekneler.
+        // Tramvaylı bölümde kara tarafındaki her şey tramvay yolunun dışına kayar.
+        const ls = -sideSign, tr = P.tram ? TRAM_W : 0;
+        if (P.tram) s.tram = ls;
+        if (i % 4 === 0) s.sprites.push({ k: 'korkuluk', x: sideSign * 1.28 });
+        if (i % 24 === 12) s.sprites.push({ k: 'lamba', x: sideSign * 1.32, flip: sideSign > 0, nohit: true });
+        if (i % 31 === 5 && P.seaItems.length) {
+          const k = pick(P.seaItems);
+          s.sprites.push({ k, x: sideSign * (SEA_X[k] ? SEA_X[k]() : 3 + r() * 5), flip: k === 'balikci' ? sideSign < 0 : r() < 0.5, nohit: true });
+        }
+        if (i % 24 === 0) s.sprites.push({ k: 'lamba', x: ls * (1.2 + tr), flip: ls < 0, nohit: !!tr });
+        if (P.near && i % 11 === 0 && r() < 0.55) s.sprites.push({ k: pick(P.near), x: ls * (1.4 + tr + r() * 0.25), flip: r() < 0.5, nohit: !!tr });
+        if (P.bldg && i % 8 === 3) s.sprites.push({ k: pick(P.bldg), x: ls * (2.4 + tr + r() * 0.5), v: Math.floor(r() * 6), flip: r() < 0.5, nohit: !!tr });
+        if (P.back && i % 11 === 6 && r() < 0.65) s.sprites.push({ k: pick(P.back), x: ls * (3.9 + tr + r() * 1.6), v: Math.floor(r() * 6), flip: r() < 0.5, nohit: !!tr });
         continue;
       }
       // deniz tarafı: korkuluk ve fener direkleri
@@ -409,9 +453,9 @@
     segs[10].sprites.push({ k: S.num === 1 ? 'basla' : 'kontrol', x: 0 });
     segs[10].line = '#f4f0e8';
     if (last) segs[bodyEnd + 40].line = '#f4f0e8';
-    const partInfo = ranges.map((g) => ({ start: g.start, end: g.end, sea: g.P.sea, land: g.P.land }));
+    const partInfo = ranges.map((g) => ({ start: g.start, end: g.end, sea: g.P.sea, land: g.P.land, tram: g.P.tram ? (g.P.sea === 'G' ? -1 : -seaSide(g.P.sea)) : 0 }));
     return { idx, segs, len: segs.length, bodyEnd, forkStart, lockAt, final: last, linear: lin, parts: partInfo };
   }
 
-  root.BY_TRACK = { SEG, RW, LANES, TUN_H, STAGES, LAYERS, COURSES, ENDINGS, nextStages, linear, seaSide, layerOf, posInLayer, buildStage, rng };
+  root.BY_TRACK = { SEG, RW, LANES, TUN_H, TRAM_W, STAGES, LAYERS, COURSES, ENDINGS, nextStages, linear, seaSide, layerOf, posInLayer, buildStage, rng };
 })(typeof window !== 'undefined' ? window : globalThis);

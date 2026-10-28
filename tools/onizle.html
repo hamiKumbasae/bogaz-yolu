@@ -22,6 +22,7 @@ window.sprites = function () {
   ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 560);
   const ks = ['lamba','korkuluk','cinar','agac','servi','apartman','yali','cami','hisar','kale','saray','kiz_kulesi','tekne','vapur','balikci','simitci','durak','semsiye','kopru_kule','kopru_uzak','basla','kontrol','bitis',
     'sur','ayasofya','sultanahmet','galata_kulesi','camlica_kulesi','camlica_camii','bariyer','otoyol_lamba','ustgecit','tunel_agzi'];
+  const ks2 = ['ahsap_ev','han','tas_bina','site','rezidans','plaza','reklam','balikekmek','misir_carsisi','kumpir','saat_kulesi','kruvaziyer'];
   let x = 2, y = 2, rowH = 0;
   const put = (img, maxH) => { const s = Math.min(1, maxH / img.lh, 90 / img.lw); const w = img.lw * s, h = img.lh * s; if (x + w > 382) { x = 2; y += rowH + 4; rowH = 0; } ctx.drawImage(img, x, y, w, h); x += w + 4; rowH = Math.max(rowH, h); };
   for (const k of ks) { const probe = BY_ART.sprite(k, { v: 3 }, 1); const s = Math.min(1, 64 / probe.lh, 90 / probe.lw); put(BY_ART.sprite(k, { v: 3 }, probe.lw * s * S), 64); }
@@ -49,6 +50,8 @@ window.tur = function (n, p, frac, opts) {
   const target = Math.floor(part.start + frac * (part.end - part.start));
   G.pos = target * BY.SEG - BY.PLAYER_Z - (opts.back || 0) * BY.SEG; G.px = G.track[target].cx + (opts.dx || 0) * BY.RW; G.cars = []; G.speed = BY.MAX * 0.6;
   G.t = opts.t || 0;
+  // tramAt: n şerit ileride bir tramvay görünsün diye zamanı ayarla
+  if (opts.tramAt) { const gap = 170 * BY.SEG, v = BY.MAX * 0.32, z0 = (target + opts.tramAt) * BY.SEG; G.t = (((z0 % gap) + gap) % gap) / v; }
   // önizleme için önde birkaç araç
   if (opts.traffic) {
     const kinds = ['araba', 'taksi', 'dolmus', 'otobus', 'araba', 'kamyon', 'taksi', 'motor'];
@@ -77,5 +80,24 @@ window.tower = function () {
   G.pos = (k - 45) * BY.SEG - BY.PLAYER_Z; G.cars = []; G.px = G.track[k].cx;
   BY_RENDER.render(ctx, G, {});
   return k;
+};
+</script>
+<script>
+// semt çizimleri: her çeşidiyle
+window.semt = function () {
+  size(384, 420);
+  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 420);
+  const A = BY_ART; let x = 2, y = 2, rowH = 0;
+  const put = (img, maxH) => { const s = Math.min(1, maxH / img.lh, 120 / img.lw); const w = img.lw * s, h = img.lh * s; if (x + w > 382) { x = 2; y += rowH + 4; rowH = 0; } ctx.drawImage(img, x, y, w, h); x += w + 4; rowH = Math.max(rowH, h); };
+  const one = (k, sp, mh) => { const p = A.sprite(k, sp, 1); const s = Math.min(1, mh / p.lh, 120 / p.lw); put(A.sprite(k, sp, p.lw * s * S), mh); };
+  for (let v = 0; v < 6; v++) one('ahsap_ev', { v }, 60);
+  for (let v = 0; v < 3; v++) one('han', { v }, 70);
+  for (let v = 0; v < 4; v++) one('tas_bina', { v }, 70);
+  for (let v = 0; v < 2; v++) one('site', { v }, 80);
+  for (let v = 0; v < 3; v++) one('rezidans', { v }, 90);
+  one('plaza', { v: 1 }, 90);
+  for (let v = 0; v < 5; v++) one('reklam', { v }, 44);
+  one('iskele', { label: 'EMİNÖNÜ' }, 50); one('balikekmek', {}, 40); one('misir_carsisi', {}, 50); one('kumpir', {}, 40); one('saat_kulesi', {}, 70); one('kruvaziyer', {}, 40);
+  put(A.car('tramvay', 0, 110 * S * 0.6), 60);
 };
 </script>
