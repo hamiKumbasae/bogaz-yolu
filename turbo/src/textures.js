@@ -116,8 +116,8 @@ export function pavers() {
     const off = (j % 2) * pw / 2;
     for (let i = -1; i < cols + 1; i++) {
       const x = i * pw + off, y = j * ph;
-      const red = r() < 0.18;
-      const t = 0.55 + r() * 0.2;
+      const red = r() < 0.06;
+      const t = 0.62 + r() * 0.12;
       const R = red ? 150 * t + 40 : 175 * t, G = red ? 95 * t + 25 : 170 * t, B = red ? 85 * t + 20 : 162 * t;
       ctx.fillStyle = `rgb(${R | 0},${G | 0},${B | 0})`;
       ctx.fillRect(x + 2, y + 2, pw - 4, ph - 4);
