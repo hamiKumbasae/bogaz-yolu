@@ -192,6 +192,23 @@
       box(g, 42, 71.5, 24, 7, 1.2, '#f6f6f2', K, 1);
     });
   }
+  function metrobus() {
+    return mk(120, 100, (g) => {
+      LW = 1.7;
+      for (const x of [8, 94]) box(g, x, 88, 18, 11, 3, '#26222c');
+      box(g, 2, 4, 116, 88, 10, '#f2f4f8');
+      g.save(); rr(g, 2, 4, 116, 88, 10); g.clip();
+      rect(g, 2, 54, 116, 7, '#d8282a'); rect(g, 2, 63, 116, 3, '#f4a020');
+      rect(g, 2, 80, 116, 12, '#3a3e48');
+      g.restore(); rr(g, 2, 4, 116, 88, 10); F(g, null);
+      box(g, 9, 16, 102, 30, 5, lgrad(g, 0, 16, 0, 46, [[0, '#4a628a'], [1, '#22304a']]), K, 1.2);
+      poly(g, [18, 44, 26, 44, 40, 18, 32, 18], 'rgba(255,255,255,0.25)', null);
+      box(g, 30, 6, 60, 9, 2, '#141018', K, 1.2); label(g, '34 AVCILAR', 60, 10.8, 5.8, '#ffb030');
+      for (const x of [6, 102]) { box(g, x, 68, 12, 9, 3, '#c81818', K, 1.1); }
+      box(g, 44, 70, 32, 8, 1.4, '#f6f6f2', K, 1);
+      label(g, 'METROBÜS', 60, 50.2, 6.4, '#2a2a3a');
+    });
+  }
   function motor() {
     return mk(32, 48, (g) => {
       LW = 1.3;
@@ -538,6 +555,278 @@
   OBJ.kontrol = gate('KONTROL NOKTASI', '#2a5ad8', '#f4c531');
   OBJ.bitis = gate('BİTİŞ', '#18141e', '#f4f0e0', true);
 
+  // ---------------- İstanbul Turu ----------------
+  // taş ve tuğla sıralı tarihi sur parçası, köşesinde burç
+  OBJ.sur = [180, 80, (g) => {
+    LW = 1.8;
+    const st = '#d6c4a0', sh = '#a8946e', br = '#b8684c';
+    const courses = (x, w, y0, y1) => {
+      g.save(); g.beginPath(); g.rect(x, y0, w, y1 - y0); g.clip();
+      for (let y = y0 + 8; y < y1; y += 16) { rect(g, x, y, w, 2.4, br); rect(g, x, y + 3.4, w, 2, br); }
+      g.strokeStyle = 'rgba(110,90,60,0.35)'; g.lineWidth = 0.7;
+      const r = rng(Math.round(x + y0));
+      for (let y = y0 + 4; y < y1; y += 5) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.stroke(); for (let k = x + r() * 8; k < x + w; k += 9 + r() * 6) { g.beginPath(); g.moveTo(k, y); g.lineTo(k, y + 5); g.stroke(); } }
+      g.restore();
+    };
+    // sur duvarı
+    box(g, 44, 36, 136, 44, 1, lgrad(g, 0, 36, 0, 80, [[0, shade(st, 0.08)], [1, sh]]));
+    courses(44, 136, 36, 80);
+    box(g, 44, 36, 136, 44, 1, null);
+    for (let x = 48; x < 176; x += 12) box(g, x, 29, 7, 9, 1, st);
+    rect(g, 45, 36.6, 134, 2, shade(st, 0.2));
+    // burç
+    box(g, 4, 12, 46, 68, 1, lgrad(g, 4, 0, 50, 0, [[0, shade(st, 0.12)], [0.7, st], [1, sh]]));
+    courses(4, 46, 12, 80);
+    box(g, 4, 12, 46, 68, 1, null);
+    for (let x = 5; x < 48; x += 10) box(g, x, 5, 6, 9, 1, st);
+    archWin(g, 21, 28, 10, 16, '#3a2c24', K);
+    box(g, 2, 11, 50, 4, 1.4, shade(st, -0.08));
+    // dibinde otlar
+    for (const [x, rr0] of [[60, 6], [82, 4.5], [120, 7], [160, 5], [12, 5], [44, 4.5]]) circ(g, x, 80, rr0, '#5e9a3a', K, 1.2);
+  }];
+  // yeşil tepe (tarihi yarımadanın sırtı): ağaçlar ve birkaç ev; üstüne yapı oturur
+  function hillBase(g, w, y0, h) {
+    g.beginPath(); g.moveTo(0, y0 + h); g.lineTo(0, y0 + 10); g.bezierCurveTo(w * 0.2, y0 - 4, w * 0.8, y0 - 4, w, y0 + 10); g.lineTo(w, y0 + h); g.closePath();
+    F(g, lgrad(g, 0, y0, 0, y0 + h, [[0, '#5e9a3e'], [1, '#3e7a32']]));
+    const r = rng(w + h);
+    for (let i = 0; i < 9; i++) { const x = 8 + r() * (w - 16), y = y0 + 16 + r() * (h - 24); box(g, x, y, 12 + r() * 8, 9 + r() * 5, 1, ['#e8c8a0', '#f0dcb0', '#d8b8b0'][i % 3], K, 1.1); }
+    for (let i = 0; i < 12; i++) circ(g, 6 + r() * (w - 12), y0 + 8 + r() * (h - 10), 5 + r() * 5, r() < 0.5 ? '#4e8a36' : '#5e9a3e', K, 1.1);
+  }
+  // Ayasofya: alçak geniş kubbe, yarım kubbeler, payandalar, dört minare
+  OBJ.ayasofya = [240, 214, (g) => {
+    LW = 1.8;
+    hillBase(g, 240, 164, 50);
+    const wall = '#e9b690', wallD = '#c88d66', lead = '#8794a8', leadL = '#aab6c6';
+    const mina = (x, top, w, col) => {
+      poly(g, [x - w / 2, 170, x + w / 2, 170, x + w * 0.42, top + 26, x - w * 0.42, top + 26], col);
+      for (const y of [top + 60, top + 36]) box(g, x - w * 0.8, y, w * 1.6, 4, 1.4, col);
+      poly(g, [x - w * 0.42, top + 26, x + w * 0.42, top + 26, x, top], lead);
+      line(g, x, top, x, top - 5, '#c8a020', 1.2);
+    };
+    mina(14, 10, 8, '#f0e8dc'); mina(226, 10, 8, '#f0e8dc');
+    mina(40, 34, 10, '#d8936c'); mina(200, 34, 10, '#d8936c');
+    // payandalar ve gövde
+    box(g, 50, 108, 140, 62, 1, lgrad(g, 0, 108, 0, 170, [[0, wall], [1, wallD]]));
+    for (const x of [50, 178]) poly(g, [x, 170, x + 12, 170, x + 12, 80, x + 3, 86], wallD);
+    for (let x = 64; x < 180; x += 16) archWin(g, x, 124, 8, 16, '#4a4a64', K);
+    archWin(g, 110, 140, 20, 30, '#5a4030', K);
+    box(g, 66, 92, 108, 18, 1, wall);
+    // yarım kubbeler
+    for (const cx of [84, 156]) {
+      g.beginPath(); g.ellipse(cx, 94, 24, 18, 0, Math.PI, 0); g.closePath(); F(g, lead);
+      g.save(); g.clip(); ell(g, cx - 8, 84, 8, 7, leadL, null); g.restore();
+    }
+    // kasnak ve ana kubbe
+    box(g, 84, 70, 72, 24, 1, wall);
+    for (let x = 88; x < 152; x += 7) archWin(g, x, 76, 3.4, 9, '#4a4a64');
+    g.beginPath(); g.ellipse(120, 72, 46, 34, 0, Math.PI, 0); g.closePath(); F(g, lead);
+    g.save(); g.clip();
+    ell(g, 104, 54, 16, 12, leadL, null, 0, -0.4);
+    g.strokeStyle = 'rgba(40,50,70,0.35)'; g.lineWidth = 0.8;
+    for (let k = -4; k <= 4; k++) { g.beginPath(); g.moveTo(120, 38); g.quadraticCurveTo(120 + k * 9, 46, 120 + k * 11.4, 72); g.stroke(); }
+    g.restore();
+    line(g, 120, 38, 120, 30, '#c8a020', 1.4);
+  }];
+  // Sultanahmet Camii: basamak basamak kubbeler, altı minare
+  OBJ.sultanahmet = [260, 222, (g) => {
+    LW = 1.8;
+    hillBase(g, 260, 170, 52);
+    const st = '#e8e6e0', sh = '#c8c6c0', lead = '#7f8ca4', leadL = '#a4b0c4';
+    const mina = (x, top, w) => {
+      poly(g, [x - w / 2, 176, x + w / 2, 176, x + w * 0.4, top + 24, x - w * 0.4, top + 24], st);
+      rect(g, x + w * 0.1, top + 25, w * 0.28, 176 - top - 26, sh);
+      for (const y of [top + 34, top + 62, top + 90]) if (y < 150) box(g, x - w * 0.85, y, w * 1.7, 3.6, 1.4, st);
+      poly(g, [x - w * 0.4, top + 24, x + w * 0.4, top + 24, x, top], lead);
+      line(g, x, top, x, top - 5, '#c8a020', 1.2);
+    };
+    mina(8, 24, 6); mina(252, 24, 6);
+    mina(30, 6, 7); mina(230, 6, 7); mina(62, 6, 7); mina(198, 6, 7);
+    const dome = (cx, by, r, ry) => {
+      g.beginPath(); g.ellipse(cx, by, r, ry, 0, Math.PI, 0); g.closePath(); F(g, lead);
+      g.save(); g.clip(); ell(g, cx - r * 0.4, by - ry * 0.55, r * 0.34, ry * 0.45, leadL, null, 0, -0.4); g.restore();
+      line(g, cx, by - ry, cx, by - ry - Math.max(4, r * 0.18), '#c8a020', 1.2);
+    };
+    // avlu duvarı ve gövde
+    box(g, 14, 140, 232, 36, 1, st);
+    for (let x = 22; x < 240; x += 14) archWin(g, x, 150, 8, 16, '#4a5a7a', K);
+    box(g, 70, 112, 120, 30, 1, st);
+    for (let x = 78; x < 184; x += 13) archWin(g, x, 118, 6, 14, '#4a5a7a', K);
+    for (const cx of [26, 52, 78, 182, 208, 234]) dome(cx, 141, 9, 8);
+    // yarım kubbeler ve köşe kubbeleri
+    for (const cx of [86, 174]) dome(cx, 113, 14, 12);
+    for (const cx of [104, 156]) dome(cx, 101, 22, 18);
+    box(g, 98, 82, 64, 20, 1, st);
+    for (let x = 102; x < 158; x += 7) archWin(g, x, 87, 3.4, 9, '#4a5a7a');
+    dome(130, 84, 40, 32);
+  }];
+  // Galata Kulesi: silindir taş gövde, seyir balkonu, konik külah
+  OBJ.galata_kulesi = [70, 196, (g) => {
+    LW = 1.8;
+    const st = '#cbb58c', sh = '#9c8660';
+    poly(g, [10, 196, 60, 196, 56, 52, 14, 52], lgrad(g, 10, 0, 60, 0, [[0, shade(st, 0.18)], [0.55, st], [1, sh]]));
+    g.save(); g.beginPath(); g.moveTo(10, 196); g.lineTo(60, 196); g.lineTo(56, 52); g.lineTo(14, 52); g.closePath(); g.clip();
+    g.strokeStyle = 'rgba(100,80,50,0.35)'; g.lineWidth = 0.8;
+    for (let y = 58; y < 196; y += 6) { g.beginPath(); g.moveTo(8, y); g.lineTo(62, y); g.stroke(); }
+    g.restore();
+    poly(g, [10, 196, 60, 196, 56, 52, 14, 52], null);
+    for (const y of [80, 112, 144]) archWin(g, 31, y, 8, 14, '#3a3040', K);
+    archWin(g, 28, 176, 14, 20, '#4a3428', K);
+    // seyir katı
+    box(g, 9, 44, 52, 10, 1.4, shade(st, 0.1));
+    box(g, 12, 26, 46, 19, 1, '#e8dcc4');
+    for (let k = 0; k < 5; k++) archWin(g, 15 + k * 8.6, 29, 5.4, 13, '#3e5476');
+    box(g, 8, 22, 54, 5, 1.4, shade(st, -0.05));
+    poly(g, [6, 23, 64, 23, 35, -16], lgrad(g, 6, 0, 64, 0, [[0, '#6e7c90'], [0.4, '#a2aec0'], [1, '#5a687c']]));
+    line(g, 35, -16, 35, -24, '#c8a020', 1.4);
+  }];
+  // Çamlıca Kulesi: ince gövde, lale biçimli yayın katları, anten
+  OBJ.camlica_kulesi = [80, 300, (g) => {
+    LW = 1.8;
+    const c = '#eef0f2', d = '#b8bec8';
+    poly(g, [30, 300, 50, 300, 46, 120, 34, 120], lgrad(g, 30, 0, 50, 0, [[0, '#ffffff'], [0.6, c], [1, d]]));
+    // lale gövdesi
+    g.beginPath(); g.moveTo(34, 128); g.bezierCurveTo(12, 110, 10, 80, 22, 52); g.lineTo(58, 52); g.bezierCurveTo(70, 80, 68, 110, 46, 128); g.closePath();
+    F(g, lgrad(g, 10, 0, 70, 0, [[0, '#ffffff'], [0.55, c], [1, d]]));
+    g.save(); g.clip();
+    for (const [y, h] of [[62, 6], [78, 5], [92, 4]]) rect(g, 0, y, 80, h, '#3e5a80');
+    rect(g, 0, 63, 80, 1.4, 'rgba(255,255,255,0.5)');
+    g.restore();
+    box(g, 20, 46, 40, 8, 2, c);
+    poly(g, [28, 47, 52, 47, 44, 18, 36, 18], c);
+    line(g, 40, 18, 40, 0, '#8a8e98', 2.2);
+    circ(g, 40, 1, 2, '#ff4a3a', null);
+  }];
+  // Çamlıca Camii: büyük kubbe, altı minare (uzaktan, tepede)
+  OBJ.camlica_camii = [260, 190, (g) => {
+    LW = 1.8;
+    const st = '#f2eee6', sh = '#d0cabc', lead = '#8a96aa', leadL = '#b0bccc';
+    const mina = (x, top) => {
+      poly(g, [x - 3.4, 190, x + 3.4, 190, x + 2.8, top + 22, x - 2.8, top + 22], st);
+      for (const y of [top + 40, top + 70, top + 100]) box(g, x - 6, y, 12, 3.6, 1.4, st);
+      poly(g, [x - 2.8, top + 22, x + 2.8, top + 22, x, top], lead);
+    };
+    for (const [x, t] of [[10, 10], [36, 2], [60, 18], [200, 18], [224, 2], [250, 10]]) mina(x, t);
+    box(g, 66, 128, 128, 62, 1, st);
+    for (let x = 74; x < 188; x += 15) archWin(g, x, 140, 8, 22, '#4a5a7a', K);
+    const dome = (cx, by, r, ry) => {
+      g.beginPath(); g.ellipse(cx, by, r, ry, 0, Math.PI, 0); g.closePath(); F(g, lead);
+      g.save(); g.clip(); ell(g, cx - r * 0.4, by - ry * 0.55, r * 0.34, ry * 0.45, leadL, null, 0, -0.4); g.restore();
+      line(g, cx, by - ry, cx, by - ry - Math.max(4, r * 0.18), '#c8a020', 1.2);
+    };
+    for (const cx of [86, 174]) dome(cx, 129, 18, 16);
+    box(g, 92, 96, 76, 34, 1, st);
+    for (let x = 97; x < 164; x += 8) archWin(g, x, 104, 4, 12, '#4a5a7a');
+    dome(130, 98, 46, 40);
+    rect(g, 66, 186, 128, 4, sh);
+  }];
+  // otoyol çelik bariyeri
+  OBJ.bariyer = [64, 22, (g) => {
+    LW = 1.2;
+    for (const x of [6, 54]) box(g, x, 6, 4, 16, 0.8, '#5a606c');
+    box(g, 0, 5, 64, 9, 2, lgrad(g, 0, 5, 0, 14, [[0, '#f2f4f6'], [0.45, '#b8bec8'], [0.55, '#9aa2ae'], [1, '#d8dce2']]));
+    line(g, 1, 9.5, 63, 9.5, '#8a929e', 0.8);
+    for (const x of [7, 55]) box(g, x - 0.4, 8, 3.4, 3, 0.8, x === 7 ? '#e83a2a' : '#f4f4f0', K, 0.7);
+  }];
+  // otoyol aydınlatma direği
+  OBJ.otoyol_lamba = [40, 160, (g) => {
+    LW = 1.4;
+    const c = '#8a909c';
+    box(g, 6, 150, 12, 10, 2, '#6a707c');
+    poly(g, [10, 152, 14, 152, 13.2, 24, 10.8, 24], c);
+    g.strokeStyle = K; g.lineWidth = 3.4; g.beginPath(); g.moveTo(12, 26); g.quadraticCurveTo(12.6, 14, 30, 14); g.stroke();
+    g.strokeStyle = c; g.lineWidth = 1.8; g.stroke();
+    box(g, 24, 11, 15, 6, 2.4, '#5a606c');
+    box(g, 26, 16, 11, 2.4, 1, '#fff6c8', null);
+  }];
+  // Avrasya Tüneli'nin ağzı: beton çerçeve, yazı bandı, üstünde yeşil tepe. Ortası boştur (tünelin içi görünür).
+  // 50 birim = yarım yol genişliği; ağzın ölçüleri render.js'teki tünel kesitiyle aynıdır.
+  OBJ.tunel_agzi = [600, 150, (g) => {
+    LW = 2.2;
+    const PX = 50, H0 = 150, k = 0.5625 * PX / 2000;
+    const hW = 0.58 * 3400 * k, hT = 3400 * k;
+    const op = [300 - 1.25 * PX, H0, 300 - 1.25 * PX, H0 - hW, 300 - 0.82 * PX, H0 - hT, 300 + 0.82 * PX, H0 - hT, 300 + 1.25 * PX, H0 - hW, 300 + 1.25 * PX, H0];
+    // tepe
+    g.beginPath(); g.moveTo(0, H0); g.lineTo(0, 70); g.bezierCurveTo(90, 30, 200, 12, 300, 14); g.bezierCurveTo(400, 12, 510, 30, 600, 70); g.lineTo(600, H0); g.closePath();
+    F(g, lgrad(g, 0, 10, 0, H0, [[0, '#6aaa4a'], [1, '#3e7a32']]));
+    const r = rng(5);
+    for (let i = 0; i < 26; i++) { const x = 20 + r() * 560, y = 40 + r() * 30 + Math.abs(x - 300) * 0.08; circ(g, x, y, 7 + r() * 8, r() < 0.5 ? '#4e8a36' : '#5e9a3e', K, 1.2); }
+    // istinat duvarları
+    poly(g, [120, H0, 196, H0, 214, 56, 160, 64], '#c9c4ba');
+    poly(g, [480, H0, 404, H0, 386, 56, 440, 64], '#c9c4ba');
+    // ön yüz
+    box(g, 196, 40, 208, 110, 3, lgrad(g, 0, 40, 0, 150, [[0, '#e6e2da'], [1, '#bcb6aa']]));
+    box(g, 204, 46, 192, 24, 3, '#1e4a8a');
+    label(g, 'AVRASYA TÜNELİ', 300, 58.6, 15, '#ffffff');
+    // ağzın çerçevesi
+    poly(g, op.map((v, i) => (i % 2 ? v - (v === H0 ? 0 : 5) : v + (v < 300 ? -6 : 6))), '#8a8478');
+    g.save(); g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); g.moveTo(op[0], op[1]); for (let i = 2; i < op.length; i += 2) g.lineTo(op[i], op[i + 1]); g.closePath(); g.fill();
+    g.restore();
+    // yeşil-sarı ışıklar
+    for (const x of [222, 378]) { circ(g, x, 84, 4, '#7cff6a', K, 1.2); circ(g, x, 96, 4, '#3a3a40', K, 1.2); }
+  }];
+  // tünel duvarındaki levhalar: SOS dolabı ya da "deniz altındasın"
+  function tunelLevha(v) {
+    return [64, 64, (g) => {
+      LW = 1.4;
+      if (v === 1) {
+        box(g, 2, 8, 60, 34, 3, '#1e4a8a');
+        box(g, 5, 11, 54, 28, 2, null, '#f4f0e0', 1);
+        label(g, 'DENİZ ALTI', 32, 20, 9, '#ffffff');
+        label(g, '−106 m', 32, 31, 10, '#9af4e4');
+      } else {
+        box(g, 8, 10, 48, 32, 3, '#f4f4f0');
+        box(g, 8, 10, 48, 11, 3, '#2a8a4a');
+        label(g, 'SOS', 32, 16, 9, '#ffffff');
+        box(g, 20, 25, 24, 13, 2, '#e8e8e4', K, 1);
+        circ(g, 32, 31.5, 3.4, '#e83a2a', K, 1);
+      }
+    }];
+  }
+  // otoyol yaya üst geçidi (E-5: metrobüs yolunun da üstünden geçer)
+  OBJ.ustgecit = [520, 150, (g) => {
+    LW = 2;
+    const conc = '#cfcac0', st = '#4f6f9c';
+    // ayaklar ve merdivenler
+    for (const x of [6, 202, 494]) box(g, x, 40, 20, 110, 2, lgrad(g, x, 0, x + 20, 0, [[0, shade(conc, 0.1)], [1, shade(conc, -0.15)]]));
+    poly(g, [494, 150, 514, 150, 514, 52, 470, 52, 470, 58], '#a8a296');
+    for (let k = 0; k < 8; k++) line(g, 474 + k * 5, 56 + k * 11.4, 514, 56 + k * 11.4, '#8a8478', 1.2);
+    // köprü gövdesi: kafes ve camlar
+    box(g, 0, 22, 520, 20, 2, st);
+    g.save(); rr(g, 0, 22, 520, 20, 2); g.clip();
+    for (let x = 4; x < 520; x += 16) { line(g, x, 22, x + 8, 42, '#2e4a74', 1.6); line(g, x + 8, 42, x + 16, 22, '#2e4a74', 1.6); }
+    g.restore();
+    box(g, -2, 40, 524, 6, 2, '#3a5680');
+    box(g, -2, 4, 524, 6, 2, '#3a5680');
+    for (let x = 4; x < 516; x += 26) box(g, x, 8, 3, 15, 1, '#3a5680', null);
+    box(g, 0, 10, 520, 13, 1, 'rgba(180,220,240,0.35)', null);
+    box(g, 210, 12, 100, 9, 2, '#f4c531', K, 1);
+    label(g, 'METROBÜS', 260, 16.6, 7, '#2a1a10');
+  }];
+  // otoyol levha köprüsü: iki yeşil levha, yön okları çizilir
+  function arrow(g, x, y, dir, s) {
+    g.save(); g.translate(x, y); g.rotate(dir === 'ur' ? Math.PI / 4 : dir === 'r' ? Math.PI / 2 : dir === 'ul' ? -Math.PI / 4 : 0);
+    poly(g, [0, -s, s * 0.75, -s * 0.15, s * 0.28, -s * 0.15, s * 0.28, s, -s * 0.28, s, -s * 0.28, -s * 0.15, -s * 0.75, -s * 0.15], '#ffffff', null);
+    g.restore();
+  }
+  function levhaDef(labels) {
+    return [360, 140, (g) => {
+      LW = 2;
+      for (const x of [4, 344]) box(g, x, 26, 12, 114, 2, '#9aa0aa');
+      box(g, 0, 22, 360, 10, 2, '#8a909c');
+      for (let x = 6; x < 354; x += 12) { line(g, x, 23, x + 6, 31, '#6a707c', 1); line(g, x + 6, 31, x + 12, 23, '#6a707c', 1); }
+      labels.forEach((lb, i) => {
+        const [t, dir] = lb.split('>');
+        const x0 = 22 + i * 162;
+        box(g, x0, 0, 154, 48, 4, '#1e7a4a');
+        box(g, x0 + 4, 4, 146, 40, 2.4, null, '#f4f0e0', 1.2);
+        let px = 15; while (textW(t, px) > 112 && px > 8) px -= 0.5;
+        label(g, t, x0 + 14 + 56, 24.5, px, '#ffffff');
+        if (dir) arrow(g, x0 + 138, 24, dir, 9);
+      });
+    }];
+  }
+
   // levhalar
   function tabelaDef(text) {
     const w = Math.max(64, textW(text, 14) + 22);
@@ -602,12 +891,15 @@
     if (k === 'tabela') return ['tabela:' + sp.label, tabelaDef(sp.label)];
     if (k === 'ayrim') return ['ayrim:' + sp.label.join('|'), ayrimDef(sp.label)];
     if (k === 'apartman') { const v = (sp.v || 0) % 7; return ['apt:' + v, [128, 168, (g) => apartman(g, v)]]; }
+    if (k === 'levha') return ['levha:' + sp.label.join('|'), levhaDef(sp.label)];
+    if (k === 'tunel_levha') return ['tl:' + (sp.v || 0), tunelLevha(sp.v || 0)];
     if (OBJ[k]) return ['o:' + k, OBJ[k]];
     return ['o:?', [8, 8, (g) => rect(g, 0, 0, 8, 8, '#f0f')]];
   }
   const defCache = new Map();
   function sprite(k, sp, needPx) {
-    const dk = k === 'tabela' ? 'tabela:' + sp.label : k === 'ayrim' ? 'ayrim:' + sp.label.join('|') : k === 'apartman' ? 'apt:' + ((sp.v || 0) % 7) : 'o:' + k;
+    const dk = k === 'tabela' ? 'tabela:' + sp.label : k === 'ayrim' ? 'ayrim:' + sp.label.join('|') : k === 'apartman' ? 'apt:' + ((sp.v || 0) % 7)
+      : k === 'levha' ? 'levha:' + sp.label.join('|') : k === 'tunel_levha' ? 'tl:' + (sp.v || 0) : 'o:' + k;
     let d = defCache.get(dk);
     if (!d) { d = defOf(k, sp)[1]; defCache.set(dk, d); }
     const [w, h, fn] = d;
@@ -615,7 +907,7 @@
     return getLod(dk + '@' + L, w, h, Math.pow(2, L), fn);
   }
   const CAR_DEF = {
-    taksi: [72, 44, () => sedan(0, true)], dolmus: [84, 64, dolmus], otobus: [116, 96, otobus], kamyon: [108, 88, kamyon], motor: [32, 48, motor],
+    taksi: [72, 44, () => sedan(0, true)], dolmus: [84, 64, dolmus], otobus: [116, 96, otobus], kamyon: [108, 88, kamyon], motor: [32, 48, motor], metrobus: [120, 100, metrobus],
   };
   // araç çizimleri kendi tuvalini kurar; istenen ölçekte kurulsun diye S geçici olarak değiştirilir
   function withScale(s, fn) { const old = S; S = s; try { return fn(); } finally { S = old; } }
@@ -627,6 +919,7 @@
         case 'otobus': return otobus();
         case 'kamyon': return kamyon();
         case 'motor': return motor();
+        case 'metrobus': return metrobus();
         default: return sedan(color, false);
       }
     });
@@ -713,8 +1006,10 @@
     lamba: 0.16, korkuluk: 0.55, cinar: 1.4, agac: 1.2, servi: 0.45, apartman: 2.6, yali: 3.2, cami: 4.8, hisar: 1.9, kale: 4.5, saray: 6,
     kiz_kulesi: 2.6, tekne: 1.3, vapur: 4.6, balikci: 0.5, simitci: 0.55, durak: 1.3, semsiye: 0.95, tabela: 1.3, ayrim: 3.2,
     kopru_kule: 2.95, kopru_uzak: 18, basla: 2.6, kontrol: 2.6, bitis: 2.6, aski: 0.03,
+    sur: 2.8, ayasofya: 8, sultanahmet: 8.5, galata_kulesi: 2.2, camlica_kulesi: 3.4, camlica_camii: 7, bariyer: 0.55, otoyol_lamba: 0.24,
+    levha: 3.6, ustgecit: 5.2, tunel_agzi: 12, tunel_levha: 0.64,
   };
-  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2 };
+  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2, metrobus: 0.74 };
 
   function setScale(s) { if (Math.abs(s - S) < 1e-6) return; S = s; scaled.clear(); }
   function clearAll() { scaled.clear(); lod.clear(); lodPx = 0; defCache.clear(); }

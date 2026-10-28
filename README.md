@@ -1,8 +1,12 @@
 # Boğaz Yolu
 
-İstanbul Boğazı'nın sahil yolunda geçen, süreye karşı bir araba yarışı. Tarayıcıda çalışır, kurulum gerekmez.
-Eminönü'nden yola çıkarsın. Her etabın sonundaki yol ayrımında Rumeli yakasını, Anadolu yakasını ya da köprüyü
-seçersin. Süre bitmeden kontrol noktalarına yetişip dört farklı sondan birine ulaşırsın.
+İstanbul'da geçen, süreye karşı bir araba yarışı. Tarayıcıda çalışır, kurulum gerekmez. İki mod var:
+
+- **Boğaz Yolu:** Eminönü'nden yola çıkarsın. Her etabın sonundaki yol ayrımında Rumeli yakasını, Anadolu yakasını
+  ya da köprüyü seçersin. Süre bitmeden kontrol noktalarına yetişip dört farklı sondan birine ulaşırsın.
+- **İstanbul Turu:** Cankurtaran'dan başlayıp yine Cankurtaran'da biten 7 etaplık bir tur. Galata Köprüsü'nden
+  Haliç'i, 1. Köprü'den Boğaz'ı geçip Anadolu'ya çıkarsın; Şile Otoyolu ve E-5'ten sonra Avrasya Tüneli ile
+  denizin altından Avrupa'ya dönersin.
 
 **Oyna:** https://hamikumbasae.github.io/bogaz-yolu/
 
@@ -10,9 +14,10 @@ Düz HTML, CSS ve JavaScript. Bütün çizimler, müzikler ve pistler bu proje i
 
 Çizimler çizgi film tarzında ve vektördür; oyun ekranın gerçek çözünürlüğünde çizilir, telefonda da büyük
 ekranda da pürüzsüz görünür. Yol boyunca camiler, yalılar, Rumelihisarı, Kız Kulesi, Beylerbeyi Sarayı,
-vapurlar, simitçiler, çay bahçeleri ve iki Boğaz köprüsü var.
+vapurlar, simitçiler, çay bahçeleri ve iki Boğaz köprüsü var. Turda bunlara Ayasofya, Sultanahmet Camii, tarihi
+surlar, Galata Kulesi, Dolmabahçe, Çamlıca Kulesi ve Çamlıca Camii, metrobüs ve Avrasya Tüneli eklenir.
 
-## Rota
+## Boğaz Yolu rotası
 
 Her oyunda 4 etap sürersin; yol ayrımlarında sola dönersen Rumeli, sağa dönersen Anadolu yakasına (ya da köprüye) gidersin.
 
@@ -29,6 +34,21 @@ Sarıyer       Köprüsü                Kanlıca         Anadolu Kavağı
 
 Yolculuk sabah başlar, gün batımında biter. Dört son var: **Rumeli Feneri**, **köprüde gün batımı**,
 **Kanlıca yoğurdu** ve **Yoros Kalesi**.
+
+## İstanbul Turu rotası
+
+Yol ayrımı yoktur; 7 etabı sırayla sürersin:
+
+1. **Cankurtaran – Sirkeci:** surların yanından Sarayburnu'na; tepede Sultanahmet ve Ayasofya
+2. **Eminönü – Galata Köprüsü – Karaköy:** Yeni Cami, oltalarını Haliç'e sarkıtan balıkçılar, Galata Kulesi
+3. **Kabataş – Beşiktaş – Ortaköy:** Dolmabahçe Sarayı, Ortaköy Camii
+4. **15 Temmuz Şehitler Köprüsü (1. Köprü):** Anadolu yakasına geçiş
+5. **Üsküdar – Şile Otoyolu:** Kız Kulesi, sonra otoyolda Çamlıca Kulesi ve Çamlıca Camii
+6. **E-5:** solda metrobüs yolu, üst geçitler
+7. **Avrasya Tüneli – Kennedy Caddesi:** denizin altından Kazlıçeşme'ye, gün batımında surların yanından
+   **Cankurtaran'da bitiş**
+
+Rekorlar her mod için ayrı tutulur.
 
 ## Kurallar
 
@@ -66,14 +86,15 @@ Yolculuk sabah başlar, gün batımında biter. Dört son var: **Rumeli Feneri**
 
 ```
 python3 -m http.server      # sonra http://localhost:8000
-node tests/core.test.js     # pist, fizik, çarpışma, süre ve bir botla 8 rotanın hepsi
+node tests/core.test.js     # pist, fizik, çarpışma, süre; bir botla Boğaz Yolu'nun 8 rotası ve İstanbul Turu
 ```
 
-- `src/track.js`: 10 etap, yol ayrımı ağı, viraj ve tepe üretimi, yol kenarı nesneleri (tohumlu, hep aynı pist).
+- `src/track.js`: iki mod; Boğaz Yolu'nun 10 etabı ve yol ayrımı ağı, turun 7 etabı. Etaplar bölümlerden oluşur
+  (sahil, alçak köprü, asma köprü, otoyol, E-5, tünel). Viraj ve tepe üretimi, yol kenarı nesneleri (tohumlu, hep aynı pist).
 - `src/core.js`: yarış kuralları: hız, direksiyon, savrulma, yol dışı, trafik, çarpışma, süre, ayrım seçimi.
   Çizimden bağımsızdır, testler Node'da çalıştırır.
 - `src/bot.js`: başlık ekranındaki gösteri sürüşü; testlerde süre dengesini ölçer.
-- `src/render.js`: sözde-3D yol çizici (segment izdüşümü, sis, nesne ölçekleme).
+- `src/render.js`: sözde-3D yol çizici (segment izdüşümü, sis, nesne ölçekleme, tünel duvarı ve tavanı, metrobüsler).
 - `src/art.js`, `src/endings.js`: vektör çizimler (her nesne ekrandaki boyutuna göre kademeli önbelleğe alınır),
   gün saatine göre renkler, bitiş sahneleri.
 - `src/audio.js`: motor sesi, efektler ve üç radyo kanalının özgün müzikleri.

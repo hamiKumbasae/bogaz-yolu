@@ -17,12 +17,15 @@
   };
   const START_TIME = 80;
   const EXTEND = [0, 62, 64, 66]; // katmana göre eklenen süre
+  // mod başına süre: başlangıç süresi, etap süresinin en yüksek hızda geçiş süresine oranı ve eki.
+  // Turun virajları daha yumuşak, trafiği daha seyrek: aynı yol daha kısa sürede alınır.
+  const TIMING = { bogaz: { start: START_TIME, k: 1.15, add: 8 }, tur: { start: 62, k: 1.0, add: 7 } };
   const CRASH_TIME = 1.8;
 
   // nesnelerin çarpışma genişliği (yarı yol genişliği cinsinden); listede olmayanlar çarpışmaz
   const HIT = {
     lamba: 0.14, cinar: 0.5, agac: 0.45, servi: 0.25, apartman: 1.5, yali: 1.4, durak: 0.6, simitci: 0.4, semsiye: 0.5,
-    tabela: 0.16, ayrim: 0.5, cami: 2.2, hisar: 1.0, kale: 1.6, saray: 2.5,
+    tabela: 0.16, ayrim: 0.5, cami: 2.2, hisar: 1.0, kale: 1.6, saray: 2.5, sur: 2.0, galata_kulesi: 1.3,
   };
   // trafik araçları: genişlik (yarı yol cinsinden), boy (segment), hız aralığı (en yüksek hıza oran)
   const CARS = {
@@ -38,19 +41,29 @@
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+  // opts.course: 'bogaz' (yol ayrımlı Boğaz Yolu, varsayılan) ya da 'tur' (İstanbul Turu)
   function newRace(opts) {
     opts = opts || {};
+    const course = TR.COURSES[opts.course] ? opts.course : 'bogaz';
     const G = {
+      course,
       track: [], stages: [], route: [], cur: 0,
       pos: 0, speed: 0, px: 0, steerVis: 0,
-      phase: 'count', countT: 3.2, t: 0, time: START_TIME, score: 0, ev: [],
+      phase: 'count', countT: 3.2, t: 0, time: TIMING[course].start, score: 0, ev: [],
       cars: [], crashT: 0, crashDir: 1, offroad: false, bumpT: 0, skid: 0,
       lockSide: null, nextIdx: null, goalT: 0, result: null, lapTimes: [], stageT: 0,
       rand: TR.rng(opts.seed || 12345), passedGates: new Set(), extendShow: 0, lastExtend: 0,
       ending: null,
     };
-    appendStage(G, 0, 0);
+    appendStage(G, TR.COURSES[course].first, 0);
+    ensureNext(G);
     return G;
+  }
+  // Ayrımsız etaplarda sonraki etap önceden eklenir; böylece yol ufka kadar kesintisiz görünür.
+  function ensureNext(G) {
+    const last = G.stages[G.stages.length - 1];
+    if (!last.linear || G.stages.length - 1 > G.cur) return;
+    appendStage(G, TR.nextStages(last.idx)[0], G.track[last.end - 1].cx);
   }
 
   // Etabı pistin sonuna ekle; cx: bu etabın yol merkezinin dünya x'i
@@ -69,7 +82,8 @@
       }
       G.track.push(s);
     }
-    const info = { idx, start, end: G.track.length, bodyEnd: start + st.bodyEnd, forkStart: st.forkStart >= 0 ? start + st.forkStart : -1, lockAt: st.lockAt >= 0 ? start + st.lockAt : -1, final: st.final, gate: start + 10 };
+    const info = { idx, start, end: G.track.length, bodyEnd: start + st.bodyEnd, forkStart: st.forkStart >= 0 ? start + st.forkStart : -1, lockAt: st.lockAt >= 0 ? start + st.lockAt : -1, final: st.final, linear: st.linear, gate: start + 10,
+      parts: st.parts.map((p) => ({ sea: p.sea, land: p.land, start: start + p.start, end: start + p.end })) };
     G.stages.push(info);
     G.route.push(idx);
     return info;
@@ -82,19 +96,23 @@
     for (const c of roadsAt(s)) { const dd = Math.abs(x - c); if (dd < d) { d = dd; best = c; } }
     return best;
   }
-  // denize düşmeyi önleyen duvar / kara tarafındaki görünmez sınır
+  // denize düşmeyi önleyen duvar / kara tarafındaki görünmez sınır.
+  // Köprülerde, otoyolda (bariyer) ve tünelde iki yanda da duvar var.
+  const BOTH = { B: 1, G: 1, N: 1, T: 1 };
+  const wallR = (sea) => sea === 'R' || !!BOTH[sea];
+  const wallL = (sea) => sea === 'L' || !!BOTH[sea];
   function limits(s) {
     const roads = roadsAt(s);
     const lo = Math.min(...roads), hi = Math.max(...roads);
     const wall = 1.05 * RW, far = 4.5 * RW;
     let L = lo - far, R = hi + far;
-    if (s.sea === 'R' || s.sea === 'B') R = hi + wall;
-    if (s.sea === 'L' || s.sea === 'B') L = lo - wall;
+    if (wallR(s.sea)) R = hi + wall;
+    if (wallL(s.sea)) L = lo - wall;
     return [L, R];
   }
 
   // Etabı en yüksek hızda geçme süresinin biraz fazlası eklenir.
-  function extendFor(st) { return Math.round((st.end - st.start) * SEG / MAX * 1.15 + 8); }
+  function extendFor(G, st) { const T = TIMING[G.course]; return Math.round((st.end - st.start) * SEG / MAX * T.k + T.add); }
   function ev(G, e, extra) { G.ev.push(extra ? Object.assign({ e }, extra) : { e }); }
   const curStage = (G) => G.stages[G.cur];
 
@@ -116,7 +134,7 @@
   }
   function trafficTarget(G) {
     const st = curStage(G), S = STAGES[st.idx];
-    return Math.round(S.traffic * (5 + S.layer * 1.0));
+    return Math.round(S.traffic * (5 + S.lvl * 1.0));
   }
   function inBody(G, z) {
     const st = curStage(G);
@@ -293,7 +311,7 @@
     const [L, R] = limits(s2);
     if (G.px > R || G.px < L) {
       G.px = clamp(G.px, L, R);
-      if (G.speed > MAX * 0.25 && (s2.sea === 'B' || (G.px >= R && s2.sea === 'R') || (G.px <= L && s2.sea === 'L'))) { G.speed *= 0.55; G.bumpT = 0.4; ev(G, 'wall'); }
+      if (G.speed > MAX * 0.25 && ((G.px >= R && wallR(s2.sea)) || (G.px <= L && wallL(s2.sea)))) { G.speed *= 0.55; G.bumpT = 0.4; ev(G, 'wall'); }
     }
 
     if (G.phase === 'race') {
@@ -309,7 +327,7 @@
       G.passedGates.add(st.gate);
       // süre bitmiş ama araba kayarak kontrol noktasına yetiştiyse yarış sürer
       if (G.phase === 'timeup') { G.phase = 'race'; G.goalT = 0; ev(G, 'saved'); }
-      const add = extendFor(st);
+      const add = extendFor(G, st);
       G.time += add; G.lastExtend = add; G.extendShow = 2.5;
       G.lapTimes.push(G.stageT); G.stageT = 0;
       ev(G, 'extend', { add });
@@ -337,6 +355,7 @@
       }
       G.px -= shift;
       G.lockSide = null;
+      ensureNext(G);
       G.cars = [];
       seedTraffic(G);
       ev(G, 'stage', { idx: nst.idx });
@@ -356,7 +375,7 @@
   function kmh(G) { return Math.round(G.speed * KMH); }
 
   root.BY = {
-    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, LANE_X, HIT, START_TIME, EXTEND,
+    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, LANE_X, HIT, START_TIME, EXTEND, TIMING,
     newRace, step, segAt, roadsAt, nearestRoad, limits, kmh, curStage,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

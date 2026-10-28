@@ -1,4 +1,4 @@
-// Boğaz Yolu — pist ve yarış kuralları, ayrıca bir botla bütün rotaların süre dengesi.
+// Boğaz Yolu — pist ve yarış kuralları (iki mod), ayrıca bir botla bütün rotaların süre dengesi.
 // node tests/core.test.js [-v]
 'use strict';
 const fs = require('fs');
@@ -33,9 +33,22 @@ function startRace(seed, at) {
 
 // ---------- pist ----------
 const KNOWN = ['lamba', 'korkuluk', 'cinar', 'servi', 'agac', 'apartman', 'yali', 'cami', 'hisar', 'kiz_kulesi', 'tekne', 'vapur', 'balikci',
-  'simitci', 'durak', 'tabela', 'kopru_kule', 'aski', 'semsiye', 'saray', 'kale', 'kopru_uzak', 'basla', 'kontrol', 'bitis', 'ayrim'];
+  'simitci', 'durak', 'tabela', 'kopru_kule', 'aski', 'semsiye', 'saray', 'kale', 'kopru_uzak', 'basla', 'kontrol', 'bitis', 'ayrim',
+  'sur', 'ayasofya', 'sultanahmet', 'galata_kulesi', 'camlica_kulesi', 'camlica_camii', 'bariyer', 'otoyol_lamba', 'levha', 'ustgecit', 'tunel_agzi', 'tunel_levha'];
+function commonStageChecks(st, S) {
+  const kinds = new Set();
+  for (const s of st.segs) for (const sp of s.sprites) kinds.add(sp.k);
+  const unknown = [...kinds].filter((k) => !KNOWN.includes(k));
+  ok(unknown.length === 0, `${S.name}: bilinmeyen nesne ${unknown}`);
+  ok(st.segs.every((s) => Math.abs(s.curve) < 7.5), `${S.name}: virajlar sınırlı`);
+  ok(Math.abs(st.segs[st.len - 1].y2) < 1, `${S.name}: etap düz bitiyor`);
+  // yola (|x|<1) çarpışan nesne konmamış (kapılar ve ayrım levhası adada)
+  const onRoad = [];
+  st.segs.forEach((s) => { for (const sp of s.sprites) if (BY.HIT[sp.k] && !sp.nohit && s.fork === 0 && Math.abs(sp.x) - BY.HIT[sp.k] / 2 < 1.05) onRoad.push(sp.k); });
+  ok(onRoad.length === 0, `${S.name}: yolun üstünde engel yok ${onRoad.slice(0, 3)}`);
+}
 {
-  ok(TR.STAGES.length === 10, '10 etap');
+  ok(TR.STAGES.length === 17, '17 etap (Boğaz Yolu 10, İstanbul Turu 7)');
   ok(JSON.stringify(TR.LAYERS.map((l) => l.length)) === '[1,2,3,4]', 'katmanlar 1-2-3-4');
   for (let i = 0; i < 10; i++) {
     const st = TR.buildStage(i);
@@ -48,17 +61,42 @@ const KNOWN = ['lamba', 'korkuluk', 'cinar', 'servi', 'agac', 'apartman', 'yali'
       ok(st.segs[st.lockAt].fork > RW, `${S.name}: kilit noktasında ada başladı`);
       ok(st.segs.slice(st.forkStart).every((s) => s.curve === 0), `${S.name}: ayrım düz`);
     }
-    const kinds = new Set();
-    for (const s of st.segs) for (const sp of s.sprites) kinds.add(sp.k);
-    const unknown = [...kinds].filter((k) => !KNOWN.includes(k));
-    ok(unknown.length === 0, `${S.name}: bilinmeyen nesne ${unknown}`);
-    ok(st.segs.every((s) => Math.abs(s.curve) < 7.5), `${S.name}: virajlar sınırlı`);
-    ok(Math.abs(st.segs[st.len - 1].y2) < 1, `${S.name}: etap düz bitiyor`);
-    // yola (|x|<1) çarpışan nesne konmamış (kapılar ve ayrım levhası adada)
-    const onRoad = [];
-    st.segs.forEach((s) => { for (const sp of s.sprites) if (BY.HIT[sp.k] && !sp.nohit && s.fork === 0 && Math.abs(sp.x) - BY.HIT[sp.k] / 2 < 1.05) onRoad.push(sp.k); });
-    ok(onRoad.length === 0, `${S.name}: yolun üstünde engel yok ${onRoad.slice(0, 3)}`);
+    commonStageChecks(st, S);
   }
+}
+{
+  // İstanbul Turu: Cankurtaran'dan Cankurtaran'a ayrımsız 7 etap
+  const C = TR.COURSES.tur;
+  ok(C.count === 7 && TR.STAGES[C.first].id === 'cankurtaran', 'tur Cankurtaran\'dan başlar');
+  const seas = new Set();
+  for (let k = 0; k < C.count; k++) {
+    const i = C.first + k, S = TR.STAGES[i], st = TR.buildStage(i);
+    ok(S.num === k + 1, `${S.name}: etap numarası ${S.num}`);
+    ok(st.forkStart === -1 && st.lockAt === -1, `${S.name}: yol ayrımı yok`);
+    ok(st.final === (k === C.count - 1) && st.linear === !st.final, `${S.name}: son / doğrusal`);
+    if (!st.final) ok(TR.nextStages(i)[0] === i + 1, `${S.name}: sonraki etap`);
+    ok(st.len > 2000 && st.len < 4500, `${S.name}: uzunluk ${st.len}`);
+    ok(st.segs[10].sprites.some((sp) => sp.k === (k === 0 ? 'basla' : 'kontrol')), `${S.name}: başlangıç / kontrol kapısı`);
+    for (const s of st.segs) seas.add(s.sea);
+    commonStageChecks(st, S);
+    if (st.parts.some((p) => p.sea === 'T')) {
+      const p = st.parts.find((q) => q.sea === 'T');
+      ok(Math.min(...st.segs.slice(p.start, p.end).map((s) => s.y2)) < -2000, 'tünel denizin altına iniyor');
+      ok(st.segs[p.start].sprites.some((sp) => sp.k === 'tunel_agzi'), 'tünelin ağzı var');
+    }
+  }
+  ok(['R', 'G', 'B', 'N', 'T'].every((c) => seas.has(c)), 'turda sahil, Galata Köprüsü, asma köprü, otoyol ve tünel var');
+  const last = TR.STAGES[C.first + C.count - 1];
+  ok(last.ending === 'tur' && TR.ENDINGS.tur && last.short === 'CANKURTARAN', 'tur Cankurtaran\'da biter');
+  // yarış: sonraki etap önceden eklenir, etap geçişinde yol kesintisiz
+  const G = BY.newRace({ seed: 3, course: 'tur' });
+  ok(G.course === 'tur' && G.route.length === 2 && G.route[0] === C.first, 'turda ilk iki etap hazır');
+  ok(G.track.every((s) => s.cx === 0), 'turda yol merkezi kaymıyor');
+  // otoyolda ve tünelde iki yanda duvar
+  const hw = G.track.find((s) => s.sea === 'R');
+  const [L1, R1] = BY.limits(hw);
+  ok(R1 < 1.1 * RW && L1 < -4 * RW, 'sahilde yalnız deniz tarafında duvar');
+  for (const sea of ['N', 'T', 'G']) { const [L, R] = BY.limits({ sea, fork: 0, cx: 0 }); ok(R < 1.1 * RW && L > -1.1 * RW, `${sea}: iki yanda duvar`); }
 }
 
 // ---------- fizik ----------
@@ -162,6 +200,18 @@ const KNOWN = ['lamba', 'korkuluk', 'cinar', 'servi', 'agac', 'apartman', 'yali'
   // farklı seçimler farklı etaplara gider
   const ends = new Set(results.map((r) => r.route.split(' → ')[3]));
   ok(ends.size === 4, 'dört farklı son etap: ' + [...ends].join(', '));
+}
+
+// ---------- bot: İstanbul Turu süresinde bitiyor mu ----------
+{
+  for (let r = 0; r < 4; r++) {
+    const G = BY.newRace({ seed: 300 + r * 17, course: 'tur' });
+    let crashes = 0, minTime = 999;
+    run(G, (g) => { if (g.ev.some((e) => e.e === 'crash')) crashes++; if (g.phase === 'race' && g.stageT > 2) minTime = Math.min(minTime, g.time); return bot([])(g); }, 900, (g) => g.result);
+    ok(G.result === 'goal', `tur: bot bitirdi (${G.result}, kalan ${G.time.toFixed(1)} sn, kaza ${crashes})`);
+    ok(G.route.length === 7 && G.ending === 'tur', 'tur 7 etap, sonu Cankurtaran');
+    if (V) console.log(`tur ${r}: kalan ${G.time.toFixed(1)} sn, en düşük ${minTime.toFixed(1)}, kaza ${crashes}, etaplar ${G.lapTimes.map((t) => t.toFixed(0)).join('/')} sn, skor ${G.score}`);
+  }
 }
 
 console.log(fails ? `${fails} hata, ${passes} geçti` : `core: ${passes} denetim geçti`);

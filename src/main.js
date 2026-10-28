@@ -36,7 +36,8 @@
   };
   const COLORS = ['kirmizi', 'beyaz', 'turkuaz'];
   const COLOR_NAMES = { kirmizi: 'KIRMIZI', beyaz: 'BEYAZ', turkuaz: 'TURKUAZ' };
-  const settings = Object.assign({ radio: 0, color: 'kirmizi', tilt: false, autoGas: coarse }, store.get('by-ayar', {}));
+  const settings = Object.assign({ radio: 0, color: 'kirmizi', tilt: false, autoGas: coarse, course: 'bogaz' }, store.get('by-ayar', {}));
+  if (!TR.COURSES[settings.course]) settings.course = 'bogaz';
   const saveSettings = () => store.set('by-ayar', settings);
 
   // ---------- yazı ----------
@@ -181,6 +182,7 @@
       }
     }
     if (app.screen === 'race' && y < 30) pause();
+    else if (app.screen === 'scores' && y > 28 && y < 48) menuKey(x < W / 2 ? 'left' : 'right');
     else if (['help', 'ending', 'over', 'scores'].includes(app.screen)) menuKey('ok');
   });
 
@@ -235,20 +237,25 @@
 
   // ---------- uygulama ----------
   const app = {
-    screen: 'title', menu: 0, menuItems: [], t: 0, G: null, demo: null, demoT: 0,
-    endT: 0, overT: 0, banner: null, radioShow: 0, scores: store.get('by-rekorlar', []), name: ['A', 'A', 'A'], nameIdx: 0, lastStage: -1,
+    screen: 'title', menu: settings.course === 'tur' ? 1 : 0, menuItems: [], t: 0, G: null, demo: null, demoT: 0,
+    endT: 0, overT: 0, banner: null, radioShow: 0, name: ['A', 'A', 'A'], nameIdx: 0, lastStage: -1,
+    // rekorlar mod başına ayrı tutulur (tur daha uzun, puanı da daha yüksek)
+    scores: { bogaz: store.get('by-rekorlar', []), tur: store.get('by-rekorlar-tur', []) }, scoreCourse: settings.course,
   };
-  window.__by = { app, BY, start: () => startRace(), render: () => render() };
+  const SCORE_KEY = { bogaz: 'by-rekorlar', tur: 'by-rekorlar-tur' };
+  window.__by = { app, BY, start: (c) => startRace(c), render: () => render() };
 
   function newDemo() {
     const choices = [Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0];
-    app.demo = BY.newRace({ seed: Math.floor(Math.random() * 1e6) });
+    app.demo = BY.newRace({ seed: Math.floor(Math.random() * 1e6), course: Math.random() < 0.5 ? 'bogaz' : 'tur' });
     app.demo.bot = BOT(choices); app.demo.bgX = 0; app.demoT = 0;
     app.demo.countT = 0.01; // gösteride geri sayım yok
   }
-  function startRace() {
+  function startRace(course) {
     AU.unlock();
-    app.G = BY.newRace({ seed: Math.floor(Math.random() * 1e9) });
+    course = TR.COURSES[course] ? course : settings.course;
+    if (settings.course !== course) { settings.course = course; saveSettings(); }
+    app.G = BY.newRace({ seed: Math.floor(Math.random() * 1e9), course });
     app.G.bgX = 0;
     app.screen = 'race'; app.lastStage = -1; app.banner = null;
     AU.engineStart();
@@ -256,29 +263,32 @@
   }
   function pause() { if (app.screen !== 'race') return; app.screen = 'pause'; app.menu = 0; AU.sfx('pause'); AU.engineStop(); AU.stopRadio(); }
   function resume() { app.screen = 'race'; AU.playRadio(settings.radio); }
-  function toTitle() { app.screen = 'title'; app.menu = 0; app.G = null; AU.engineStop(); AU.playRadio(settings.radio); newDemo(); }
-  function qualifies(score) { return score > 0 && (app.scores.length < 5 || score > app.scores[app.scores.length - 1].s); }
+  function toTitle() { app.screen = 'title'; app.menu = settings.course === 'tur' ? 1 : 0; app.G = null; AU.engineStop(); AU.playRadio(settings.radio); newDemo(); }
+  function qualifies(score, course) { const L = app.scores[course]; return score > 0 && (L.length < 5 || score > L[L.length - 1].s); }
   function finishRun() {
     const G = app.G;
-    if (qualifies(G.score)) { app.screen = 'name'; app.name = ['A', 'A', 'A']; app.nameIdx = 0; }
-    else { app.screen = 'scores'; app.endT = 0; }
+    app.scoreCourse = G.course;
+    if (qualifies(G.score, G.course)) { app.screen = 'name'; app.name = ['A', 'A', 'A']; app.nameIdx = 0; }
+    else { app.screen = 'scores'; app.endT = 0; app.newEntry = null; }
   }
   function saveName() {
-    const G = app.G;
+    const G = app.G, c = G.course;
     const entry = { n: app.name.join(''), s: G.score, e: G.ending || '', r: TR.STAGES[G.route[G.route.length - 1]].short };
-    app.scores.push(entry);
-    app.scores.sort((a, b) => b.s - a.s);
-    app.scores = app.scores.slice(0, 5);
-    store.set('by-rekorlar', app.scores);
-    app.screen = 'scores'; app.endT = 0; app.newEntry = entry;
+    const L = app.scores[c];
+    L.push(entry);
+    L.sort((a, b) => b.s - a.s);
+    app.scores[c] = L.slice(0, 5);
+    store.set(SCORE_KEY[c], app.scores[c]);
+    app.screen = 'scores'; app.endT = 0; app.newEntry = entry; app.scoreCourse = c;
   }
   const LETTERS = 'ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ'.split('');
 
   function titleItems() {
     const items = [
-      { label: 'YARIŞA BAŞLA', act: () => startRace() },
+      { label: 'BOĞAZ YOLU', act: () => startRace('bogaz'), course: 'bogaz' },
+      { label: 'İSTANBUL TURU', act: () => startRace('tur'), course: 'tur' },
       { label: 'RADYO: ' + radioName(), adjust: (d) => nextRadio(d) },
-      { label: 'ARABA: ' + COLOR_NAMES[settings.color], adjust: (d) => { const i = COLORS.indexOf(settings.color); settings.color = COLORS[(i + (d < 0 ? 2 : 1)) % 3]; saveSettings(); } },
+      { label: 'ARABA: ' + COLOR_NAMES[settings.color], adjust: (d) => { const i = COLORS.indexOf(settings.color); settings.color = COLORS[(i + (d < 0 ? 2 : 1)) % 3]; saveSettings(); }, car: true },
       { label: 'NASIL OYNANIR', act: () => { app.screen = 'help'; } },
       { label: 'REKORLAR', act: () => { app.screen = 'scores'; app.endT = 9; app.newEntry = null; } },
     ];
@@ -303,7 +313,7 @@
       if (k === 'up') { app.menu = (app.menu + 2) % 3; AU.sfx('move'); }
       if (k === 'down') { app.menu = (app.menu + 1) % 3; AU.sfx('move'); }
       if (k === 'start' || k === 'back') resume();
-      if (k === 'ok') { AU.sfx('select'); if (app.menu === 0) resume(); else if (app.menu === 1) startRace(); else toTitle(); }
+      if (k === 'ok') { AU.sfx('select'); if (app.menu === 0) resume(); else if (app.menu === 1) startRace(app.G.course); else toTitle(); }
       void items;
     } else if (s === 'ending') {
       if (app.endT > 2.5 && (k === 'ok' || k === 'start')) finishRun();
@@ -316,6 +326,7 @@
       if (k === 'ok' || k === 'start') { AU.sfx('select'); app.nameIdx++; if (app.nameIdx >= 3) saveName(); }
       if (k === 'back' && app.nameIdx > 0) app.nameIdx--;
     } else if (s === 'scores') {
+      if (k === 'left' || k === 'right') { app.scoreCourse = app.scoreCourse === 'tur' ? 'bogaz' : 'tur'; app.newEntry = app.G && app.G.course === app.scoreCourse ? app.newEntry : null; AU.sfx('move'); }
       if (app.endT > 1 && (k === 'ok' || k === 'start' || k === 'back')) toTitle();
     }
   }
@@ -326,7 +337,7 @@
       switch (e.e) {
         case 'stage': {
           const S = TR.STAGES[e.idx];
-          app.banner = { a: `${S.layer + 1}. ETAP`, b: up(S.name), t: 3.2 };
+          app.banner = { a: `${S.num}. ETAP`, b: up(S.name), t: 3.2 };
           break;
         }
         case 'fork': AU.sfx('fork'); break;
@@ -435,6 +446,20 @@
       }
     }
   }
+  function ringMap(G, x, y) {
+    // İstanbul Turu: halka biçiminde 7 etap; geçilen yay sarı
+    const C = TR.COURSES.tur, n = C.count, R = 10;
+    const ang = (i) => -Math.PI / 2 + i / n * Math.PI * 2;
+    ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+    const st = BY.curStage(G), pi = Math.floor((G.pos + BY.PLAYER_Z) / BY.SEG);
+    const prog = G.cur + Math.max(0, Math.min(1, (pi - st.start) / (st.end - st.start)));
+    if (prog > 0.01) { ctx.strokeStyle = '#f4c531'; ctx.beginPath(); ctx.arc(x, y, R, ang(0), ang(prog)); ctx.stroke(); }
+    for (let i = 0; i < n; i++) {
+      const cur = i === G.cur, done = i < G.cur;
+      ART.circ(ctx, x + Math.cos(ang(i)) * R, y + Math.sin(ang(i)) * R, cur ? 2.4 : 1.7, cur ? (Math.floor(app.t * 4) % 2 ? '#ffffff' : '#f4c531') : done ? '#f4c531' : 'rgba(255,255,255,0.4)', null);
+    }
+  }
   function hud(G) {
     // skor
     panel(4, 4, 78, 26, 8);
@@ -449,13 +474,13 @@
     // etap, rota haritası, ilerleme
     const st = BY.curStage(G), S2 = TR.STAGES[st.idx];
     panel(W - 96, 4, 92, 33, 8);
-    text(`ETAP ${S2.layer + 1}`, W - 88, 7.5, '#9af4e4', 5.6, 'left', null);
+    text(G.course === 'tur' ? `ETAP ${S2.num}/${TR.COURSES.tur.count}` : `ETAP ${S2.num}`, W - 88, 7.5, '#9af4e4', 5.6, 'left', null);
     const pi = Math.floor((G.pos + BY.PLAYER_Z) / BY.SEG);
     const prog = Math.max(0, Math.min(1, (pi - st.start) / (st.end - st.start)));
     ART.rr(ctx, W - 88, 18, 44, 4, 2); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
     if (prog > 0.02) { ART.rr(ctx, W - 88, 18, 44 * prog, 4, 2); ctx.fillStyle = '#f4c531'; ctx.fill(); }
     text(S2.short, W - 88, 25, '#fff8ec', 5, 'left', null, 500);
-    routeMap(G, W - 22, 10);
+    if (G.course === 'tur') ringMap(G, W - 22, 20.5); else routeMap(G, W - 22, 10);
     // hız göstergesi
     const kmh = BY.kmh(G);
     panel(4, H - 34, 104, 30, 9);
@@ -544,14 +569,16 @@
     logo(W / 2, 40);
     const items = titleItems();
     app.menu = Math.min(app.menu, items.length - 1);
-    menu(items, 74, app.menu, 14.5, 210);
+    menu(items, 73, app.menu, items.length > 6 ? 13.8 : 14.5, 210);
     // seçilen arabanın önizlemesi
-    if (app.menu === 2) {
+    if (items[app.menu].car) {
       const img = ART.player(0, false, settings.color);
       panel(W - img.lw - 14, H - img.lh - 30, img.lw + 10, img.lh + 10, 8);
       ctx.drawImage(img, W - img.lw - 9, H - img.lh - 25, img.lw, img.lh);
     }
-    if (app.scores.length) { const s = 'REKOR ' + app.scores[0].n + ' ' + app.scores[0].s; panel(W / 2 - 52, H - 17, 104, 13, 6.5); text(s, W / 2, H - 14.6, '#ffe08a', 6.2, 'center', null); }
+    // menüde seçili modun (yoksa son oynananın) rekoru
+    const rc = items[app.menu].course || settings.course, best = app.scores[rc][0];
+    if (best) { const s = 'REKOR ' + best.n + ' ' + best.s; panel(W / 2 - 52, H - 17, 104, 13, 6.5); text(s, W / 2, H - 14.6, '#ffe08a', 6.2, 'center', null); }
   }
   function screenDim(a) { ctx.fillStyle = `rgba(14,12,34,${a})`; ctx.fillRect(0, 0, W, H); }
   function drawHelp() {
@@ -559,17 +586,17 @@
     screenDim(0.55);
     panel(14, 8, W - 28, H - 16, 12, 'rgba(18,16,42,0.86)');
     text('NASIL OYNANIR', W / 2, 15, '#f4c531', 10, 'center');
-    const story = ['Süre bitmeden Boğaz boyunca sür! Her kontrol noktası süre ekler.', 'Yol ayrımında sol RUMELİ, sağ ANADOLU ya da KÖPRÜ: 4 farklı son.'];
-    story.forEach((s, i) => text(s, W / 2, 34 + i * 11, '#fff8ec', 6.4, 'center', null, 500));
+    const story = ['Süre bitmeden sür! Her kontrol noktası süre ekler.', 'BOĞAZ YOLU: yol ayrımında sol RUMELİ, sağ ANADOLU ya da KÖPRÜ, 4 son.', 'İSTANBUL TURU: Cankurtaran\'dan köprüyle Asya\'ya, tünelle geri, 7 etap.'];
+    story.forEach((s, i) => text(s, W / 2, 30 + i * 10.5, '#fff8ec', 6.2, 'center', null, 500));
     const keys = [['← →', 'direksiyon'], ['↑ / Z', 'gaz'], ['↓ / X', 'fren'], ['R', 'radyo kanalı'], ['P', 'duraklat'], ['M', 'ses']];
     keys.forEach(([k, s], i) => {
-      const cx = i < 3 ? 70 : 230, y = 64 + (i % 3) * 15;
+      const cx = i < 3 ? 70 : 230, y = 68 + (i % 3) * 15;
       ART.rr(ctx, cx - 40, y - 2, 40, 12, 4); ctx.fillStyle = 'rgba(154,244,228,0.14)'; ctx.fill();
       text(k, cx - 20, y, '#9af4e4', 6.6, 'center', null);
       text(s, cx + 6, y, '#fff8ec', 6.6, 'left', null, 500);
     });
     const tips = ['Trafiğe hızla arkadan çarpma: kaza yaparsın.', 'Yol kenarındaki ağaç, direk ve binalara dikkat et.', 'Sert virajlarda hız kes, yoksa dışa savrulursun.'];
-    tips.forEach((s, i) => text(s, W / 2, 120 + i * 12, '#d8dcec', 6.4, 'center', null, 500));
+    tips.forEach((s, i) => text(s, W / 2, 122 + i * 12, '#d8dcec', 6.4, 'center', null, 500));
     const A = ART;
     const sample = [[A.car('taksi', 0, 40 * S), 40], [A.car('dolmus', 0, 40 * S), 40], [A.car('otobus', 0, 48 * S), 48], [A.car('motor', 0, 16 * S), 16]];
     let x = W / 2 - 80;
@@ -589,11 +616,12 @@
     E.text.forEach((s, i) => text(s, W / 2, 34 + i * 10, '#ffffff', 6.8, 'center', null, 500));
     ctx.globalAlpha = 1;
     if (app.endT > 1.5) {
-      const ph = 22 + G.lapTimes.length * 11 + 14, px = W - 128, py = H - ph - 22;
+      const rh = G.lapTimes.length > 4 ? 8.6 : 11;
+      const ph = 22 + G.lapTimes.length * rh + 14, px = W - 128, py = H - ph - 22;
       panel(px, py, 120, ph, 10, 'rgba(18,14,40,0.72)');
       text('ETAP SÜRELERİ', px + 60, py + 6, '#9af4e4', 6.4, 'center', null);
-      G.lapTimes.forEach((t, i) => { text(`${i + 1}. etap`, px + 12, py + 19 + i * 11, '#d8dcec', 6.4, 'left', null, 500); text(`${t.toFixed(1)} sn`, px + 108, py + 19 + i * 11, '#ffffff', 6.4, 'right', null); });
-      text('SKOR ' + G.score, px + 60, py + 21 + G.lapTimes.length * 11, '#f4c531', 7.4, 'center', null);
+      G.lapTimes.forEach((t, i) => { text(`${i + 1}. etap`, px + 12, py + 19 + i * rh, '#d8dcec', 6.2, 'left', null, 500); text(`${t.toFixed(1)} sn`, px + 108, py + 19 + i * rh, '#ffffff', 6.2, 'right', null); });
+      text('SKOR ' + G.score, px + 60, py + 21 + G.lapTimes.length * rh, '#f4c531', 7.4, 'center', null);
     }
     if (app.endT > 2.5 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 14, '#f4c531', 6.6, 'center');
     app.menuItems = [];
@@ -604,7 +632,7 @@
     panel(W / 2 - 120, 48, 240, 96, 14, 'rgba(30,12,30,0.82)');
     text('SÜRE BİTTİ', W / 2, 58, '#ff6a5a', 18, 'center');
     const G = app.G, S2 = TR.STAGES[G.route[G.cur]];
-    text(`${S2.layer + 1}. etapta kaldın: ${S2.name}`, W / 2, 90, '#ffffff', 6.8, 'center', null, 500);
+    text(`${S2.num}. etapta kaldın: ${S2.name}`, W / 2, 90, '#ffffff', S2.name.length > 30 ? 6 : 6.8, 'center', null, 500);
     text('SKOR ' + G.score, W / 2, 104, '#f4c531', 8, 'center', null);
     if (app.overT > 2 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, 126, '#f4c531', 6.6, 'center');
     app.menuItems = [];
@@ -627,10 +655,13 @@
     RD.render(ctx, app.demo, { color: 'kirmizi' });
     screenDim(0.45);
     panel(40, 12, W - 80, H - 24, 12, 'rgba(18,16,42,0.88)');
-    text('REKORLAR', W / 2, 20, '#f4c531', 14, 'center');
-    if (!app.scores.length) text('Henüz rekor yok', W / 2, 96, '#ffffff', 8, 'center', null, 500);
-    app.scores.forEach((e, i) => {
-      const y = 48 + i * 25, mine = app.newEntry && e === app.newEntry;
+    text('REKORLAR', W / 2, 18, '#f4c531', 12, 'center');
+    const list = app.scores[app.scoreCourse];
+    text(TR.COURSES[app.scoreCourse].name, W / 2, 36, '#9af4e4', 6.6, 'center', null);
+    tri(W / 2 - 58, 39.5, 3.2, -1, '#9af4e4'); tri(W / 2 + 58, 39.5, 3.2, 1, '#9af4e4');
+    if (!list.length) text('Henüz rekor yok', W / 2, 96, '#ffffff', 8, 'center', null, 500);
+    list.forEach((e, i) => {
+      const y = 52 + i * 24, mine = app.newEntry && e === app.newEntry;
       if (mine) { ART.rr(ctx, 52, y - 4, W - 104, 23, 6); ctx.fillStyle = Math.floor(app.t * 4) % 2 ? 'rgba(244,197,49,0.22)' : 'rgba(244,197,49,0.1)'; ctx.fill(); }
       ART.circ(ctx, 66, y + 6, 6.4, i === 0 ? '#f4c531' : i === 1 ? '#c8ccd8' : i === 2 ? '#d08a4a' : '#2e3460', null);
       text(String(i + 1), 66, y + 2.6, i < 3 ? '#2a1a10' : '#ffffff', 6.6, 'center', null);
@@ -638,7 +669,7 @@
       text(String(e.s), W - 60, y - 0.5, '#f4c531', 8, 'right', null);
       text(e.e ? TR.ENDINGS[e.e].title : e.r, 80, y + 10.5, '#9af4e4', 5.8, 'left', null, 500);
     });
-    if (app.endT > 1 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 26, '#f4c531', 6.6, 'center');
+    if (app.endT > 1 && Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 24, '#f4c531', 6.6, 'center');
     app.menuItems = [];
   }
   function render() {

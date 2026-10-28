@@ -1,4 +1,5 @@
-// Boğaz Yolu — dört bitiş sahnesi (384×216 birim): Rumeli Feneri, köprüde gün batımı, Kanlıca yoğurdu, Yoros Kalesi.
+// Boğaz Yolu — bitiş sahneleri (384×216 birim): Rumeli Feneri, köprüde gün batımı, Kanlıca yoğurdu, Yoros Kalesi
+// ve İstanbul Turu'nun sonu (Cankurtaran).
 // Çizgi film tarzı vektör; ekran ölçeğinde bir kez çizilip önbelleğe alınır.
 (function (root) {
   'use strict';
@@ -177,6 +178,50 @@
       A.archWin(g, 158, 90, 18, 28, '#2a2026', A.K);
       for (const [x, y] of [[70, 96], [118, 108], [200, 104], [256, 98]]) A.box(g, x, y, 4, 9, 1.6, '#2a2026', null);
       carSide(g, 40, 176, col);
+    },
+    // İstanbul Turu: Cankurtaran sahili, gün batımı; tepede Sultanahmet ve Ayasofya, önde surlar
+    tur: (col) => (g) => {
+      sunsetSky(g, 70, 108, 132);
+      sea(g, 130, 70);
+      // Marmara'da demirli gemiler, uzakta Adalar
+      A.LW = 1.2;
+      A.poly(g, [0, 130, 0, 122, 26, 118, 52, 124, 70, 130], '#4a3a66', null);
+      for (const [x, w] of [[96, 34], [150, 24]]) { A.box(g, x, 122, w, 5, 1, '#3a2e52', null); A.rect(g, x + w * 0.6, 116, 5, 7, '#3a2e52'); }
+      for (let i = 0; i < 4; i++) seagull(g, 60 + i * 30, 48 + (i % 2) * 12, 1.1);
+      // tarihi yarımadanın sırtı
+      g.beginPath(); g.moveTo(150, 140); g.bezierCurveTo(190, 104, 250, 96, 384, 92); g.lineTo(384, 150); g.lineTo(150, 150); g.closePath();
+      g.fillStyle = A.lgrad(g, 0, 92, 0, 150, [[0, '#4e4466'], [1, '#3a3050']]); g.fill();
+      const r = A.rng(11);
+      for (let k = 0; k < 40; k++) { const x = 170 + r() * 214, y = 110 + r() * 34; A.rect(g, x, y, 1.2, 1.2, r() < 0.5 ? '#ffd27a' : '#fff0c0'); }
+      // simgeler: gündüz çizimleri gün batımı ışığıyla boyanır
+      const warm = (k, w, x, y) => {
+        const img = A.sprite(k, {}, w * A.S);
+        const h = w * img.lh / img.lw;
+        const t = A.mk(w, h, (gg) => {
+          gg.drawImage(img, 0, 0, w, h);
+          gg.globalCompositeOperation = 'source-atop';
+          gg.fillStyle = 'rgba(255,130,90,0.28)'; gg.fillRect(0, 0, w, h);
+          gg.fillStyle = 'rgba(40,20,70,0.22)'; gg.fillRect(0, h * 0.55, w, h * 0.45);
+        });
+        g.drawImage(t, x, y - h, w, h);
+      };
+      warm('ayasofya', 112, 182, 128);
+      warm('sultanahmet', 122, 262, 124);
+      // sur ve sahil yolu
+      A.LW = 1.4;
+      A.rect(g, 140, 140, 244, 22, '#9a7e6a');
+      for (let x = 142; x < 384; x += 10) A.box(g, x, 134, 6, 7, 1, '#9a7e6a', null);
+      A.rect(g, 140, 147, 244, 2.4, '#8a5444'); A.rect(g, 140, 153, 244, 2, '#8a5444');
+      A.poly(g, [0, 162, 0, 156, 140, 152, 384, 160, 384, 162], '#6a5a6a', null);
+      // yol ve kıyı korkuluğu
+      A.rect(g, 0, 162, W, 54, '#3a3442');
+      for (let x = 0; x < W; x += 34) A.rect(g, x, 186, 18, 2, '#ece8e0');
+      A.rect(g, 0, 160, W, 3, '#cc3a2e');
+      for (const x of [40, 160, 290]) { A.line(g, x, 162, x, 128, '#2a2030', 1.6); A.circ(g, x, 126, 3, '#ffe9a0', null); const gl = g.createRadialGradient(x, 126, 1, x, 126, 16); gl.addColorStop(0, 'rgba(255,233,160,0.5)'); gl.addColorStop(1, 'rgba(255,233,160,0)'); g.fillStyle = gl; g.fillRect(x - 16, 110, 32, 32); }
+      carSide(g, 150, 182, col);
+      // CANKURTARAN levhası
+      A.line(g, 340, 162, 340, 140, '#5a6070', 2);
+      A.box(g, 300, 128, 80, 14, 2, '#1e7a4a', A.K, 1.2); A.label(g, 'CANKURTARAN', 340, 135.4, 8, '#ffffff');
     },
   };
   const cache = {};

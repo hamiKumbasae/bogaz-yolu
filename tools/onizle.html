@@ -18,24 +18,48 @@ BY_ART.setScale(S);
 function size(w, h) { cv.width = w * S; cv.height = h * S; ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true; }
 window.ready = document.fonts.load('600 10px Fredoka').then(() => document.fonts.load('500 10px Fredoka')).then(() => BY_ART.clearAll());
 window.sprites = function () {
-  size(384, 330);
-  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 330);
-  const ks = ['lamba','korkuluk','cinar','agac','servi','apartman','yali','cami','hisar','kale','saray','kiz_kulesi','tekne','vapur','balikci','simitci','durak','semsiye','kopru_kule','kopru_uzak','basla','kontrol','bitis'];
+  size(384, 560);
+  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 560);
+  const ks = ['lamba','korkuluk','cinar','agac','servi','apartman','yali','cami','hisar','kale','saray','kiz_kulesi','tekne','vapur','balikci','simitci','durak','semsiye','kopru_kule','kopru_uzak','basla','kontrol','bitis',
+    'sur','ayasofya','sultanahmet','galata_kulesi','camlica_kulesi','camlica_camii','bariyer','otoyol_lamba','ustgecit','tunel_agzi'];
   let x = 2, y = 2, rowH = 0;
   const put = (img, maxH) => { const s = Math.min(1, maxH / img.lh, 90 / img.lw); const w = img.lw * s, h = img.lh * s; if (x + w > 382) { x = 2; y += rowH + 4; rowH = 0; } ctx.drawImage(img, x, y, w, h); x += w + 4; rowH = Math.max(rowH, h); };
   for (const k of ks) { const probe = BY_ART.sprite(k, { v: 3 }, 1); const s = Math.min(1, 64 / probe.lh, 90 / probe.lw); put(BY_ART.sprite(k, { v: 3 }, probe.lw * s * S), 64); }
   const A = BY_ART;
-  for (const img of [A.player(0,false,'kirmizi'), A.player(-2,true,'kirmizi'), A.player(2,false,'turkuaz'), A.player(0,false,'beyaz'), A.car('araba',2,72*S), A.car('taksi',0,72*S), A.car('dolmus',0,84*S), A.car('otobus',0,116*S*0.7), A.car('kamyon',0,108*S*0.7), A.car('motor',0,32*S), A.sprite('tabela',{label:'SARIYER 2 KM'},120*S), A.sprite('ayrim',{label:['BEBEK','KÖPRÜ']},150*S)]) put(img, 70);
+  for (const img of [A.player(0,false,'kirmizi'), A.player(-2,true,'kirmizi'), A.player(2,false,'turkuaz'), A.player(0,false,'beyaz'), A.car('araba',2,72*S), A.car('taksi',0,72*S), A.car('dolmus',0,84*S), A.car('otobus',0,116*S*0.7), A.car('kamyon',0,108*S*0.7), A.car('motor',0,32*S), A.car('metrobus',0,120*S*0.7), A.sprite('tabela',{label:'SARIYER 2 KM'},120*S), A.sprite('ayrim',{label:['BEBEK','KÖPRÜ']},150*S),
+    A.sprite('levha',{label:['ÇAMLICA>ur','KADIKÖY E-5>u']},150*S), A.sprite('tunel_levha',{v:0},40*S), A.sprite('tunel_levha',{v:1},40*S)]) put(img, 70);
 };
 window.big = function (k, v) { size(384, 216); ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 216); const p = BY_ART.sprite(k, { v: v || 0 }, 1); const s = Math.min(380 / p.lw, 210 / p.lh); const img = BY_ART.sprite(k, { v: v || 0 }, p.lw * s * S); ctx.drawImage(img, 2, 2, img.lw * s, img.lh * s); };
-window.sim = function (seed, choices, secs) {
+window.sim = function (seed, choices, secs, course) {
   size(384, 216);
-  const G = BY.newRace({ seed }); const b = BY_BOT(choices);
+  const G = BY.newRace({ seed, course }); const b = BY_BOT(choices);
   G.bgX = 0;
   const n = Math.round(secs * 60);
   for (let i = 0; i < n; i++) { const inp = b(G); BY.step(G, inp, 1 / 60); const s = BY.segAt(G, G.pos + BY.PLAYER_Z); G.bgX += s.curve * G.speed / BY.MAX * 0.6; if (G.result) break; }
   BY_RENDER.render(ctx, G, {});
   return { stage: BY_TRACK.STAGES[G.route[G.cur]].name, kmh: BY.kmh(G), phase: G.phase };
+};
+// Tur: n. etabın (1'den başlar) p. bölümünün frac oranına git ve çiz. carsOff: trafiği kaldır.
+window.tur = function (n, p, frac, opts) {
+  opts = opts || {};
+  size(384, 216);
+  const G = BY.newRace({ seed: opts.seed || 7, course: 'tur' }); const b = BY_BOT([0, 0, 0, 0, 0, 0, 0]); G.bgX = 0;
+  for (let i = 0; i < 60 * 900 && G.cur < n - 1; i++) { BY.step(G, b(G), 1 / 60); }
+  const st = BY.curStage(G), part = st.parts[p];
+  const target = Math.floor(part.start + frac * (part.end - part.start));
+  G.pos = target * BY.SEG - BY.PLAYER_Z - (opts.back || 0) * BY.SEG; G.px = G.track[target].cx + (opts.dx || 0) * BY.RW; G.cars = []; G.speed = BY.MAX * 0.6;
+  G.t = opts.t || 0;
+  // önizleme için önde birkaç araç
+  if (opts.traffic) {
+    const kinds = ['araba', 'taksi', 'dolmus', 'otobus', 'araba', 'kamyon', 'taksi', 'motor'];
+    for (let k = 0; k < opts.traffic; k++) {
+      const kind = kinds[(k * 3 + (opts.seed || 7)) % kinds.length], D = BY.CARS[kind], lx = BY.LANE_X[(k * 2 + 1) % 3];
+      G.cars.push({ kind, z: (target + 14 + k * 23) * BY.SEG, x: lx, tx: lx, speed: BY.MAX * 0.3, w: D.w, len: D.len, laneT: 99, color: k % 5 });
+    }
+  }
+  for (let i = 0; i < (opts.steps || 0); i++) { const inp = b(G); BY.step(G, inp, 1 / 60); if (opts.carsOff) G.cars = []; }
+  BY_RENDER.render(ctx, G, {});
+  return { stage: BY_TRACK.STAGES[G.route[G.cur]].name, part: part.sea + '/' + part.land, kmh: BY.kmh(G), phase: G.phase, cars: G.cars.length };
 };
 window.ending = function (k) { size(384, 216); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(BY_ENDINGS.scene(k, '#d8302a'), 0, 0); };
 window.gate = function () {
