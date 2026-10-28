@@ -21,7 +21,13 @@ export function hash2(x, y) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-export const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+// bir kare bekle; sekme arka plandaysa (requestAnimationFrame durur) zaman aşımıyla devam et
+export const nextFrame = () => new Promise((r) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; r(); } };
+  requestAnimationFrame(go);
+  setTimeout(go, 60);
+});
 
 export function ringArea(r) {
   let a = 0;
