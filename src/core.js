@@ -50,12 +50,18 @@
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-  // opts.course: 'bogaz' (yol ayrımlı Boğaz Yolu, varsayılan) ya da 'tur' (İstanbul Turu)
+  // hava: açık, sis (görüş kısa), yağmur (yol kaygan, su birikintileri), gece
+  const WEATHERS = ['acik', 'sis', 'yagmur', 'gece'];
+  // yağmurda: virajda daha çok savrulur, fren daha geç tutar
+  const RAIN = { centri: 1.3, brake: 0.8, puddleSlip: 0.32, extra: 4 };
+  // opts.course: 'bogaz' (yol ayrımlı Boğaz Yolu, varsayılan) ya da 'tur' (İstanbul Turu); opts.weather: WEATHERS
   function newRace(opts) {
     opts = opts || {};
     const course = TR.COURSES[opts.course] ? opts.course : 'bogaz';
+    const weather = WEATHERS.includes(opts.weather) ? opts.weather : 'acik';
     const G = {
-      course,
+      course, weather, slipT: 0, slipDir: 0, splashT: 0,
+      wrand: TR.rng(((opts.seed || 12345) ^ 0x5bd1e995) >>> 0),
       track: [], stages: [], route: [], cur: 0,
       pos: 0, speed: 0, px: 0, steerVis: 0,
       phase: 'count', countT: 3.2, t: 0, time: TIMING[course].start, score: 0, ev: [],
@@ -91,6 +97,16 @@
       }
       G.track.push(s);
     }
+    // yağmurda yol üstünde su birikintileri (kapılardan, ayrımdan ve köprüden uzakta)
+    if (G.weather === 'yagmur') {
+      for (let i = 80; i < st.bodyEnd - 40; i++) {
+        const s = G.track[start + i];
+        if (s.sea === 'T' || G.wrand() > 0.009) continue;
+        const pd = { x: LANE_X[Math.floor(G.wrand() * 3)] + (G.wrand() - 0.5) * 0.3, w: 0.32 + G.wrand() * 0.18 };
+        for (let j = 0; j < 4; j++) { const q = G.track[start + i + j]; q.puddle = pd; q.puddleK = j; }
+        i += 30;
+      }
+    }
     const info = { idx, start, end: G.track.length, bodyEnd: start + st.bodyEnd, forkStart: st.forkStart >= 0 ? start + st.forkStart : -1, lockAt: st.lockAt >= 0 ? start + st.lockAt : -1, final: st.final, linear: st.linear, gate: start + 10,
       parts: st.parts.map((p) => ({ sea: p.sea, land: p.land, tram: p.tram, start: start + p.start, end: start + p.end })) };
     G.stages.push(info);
@@ -121,7 +137,7 @@
   }
 
   // Etabı en yüksek hızda geçme süresinin biraz fazlası eklenir.
-  function extendFor(G, st) { const T = TIMING[G.course]; return Math.round((st.end - st.start) * SEG / MAX * T.k + T.add); }
+  function extendFor(G, st) { const T = TIMING[G.course]; return Math.round((st.end - st.start) * SEG / MAX * T.k + T.add + (G.weather === 'yagmur' ? RAIN.extra : 0)); }
   function ev(G, e, extra) { G.ev.push(extra ? Object.assign({ e }, extra) : { e }); }
   const curStage = (G) => G.stages[G.cur];
 
@@ -303,8 +319,9 @@
     }
 
     // hız
+    const wet = G.weather === 'yagmur';
     if (gas > 0) G.speed += MAX * (P.accel - P.accelDrop * sp) * gas * dt;
-    if (brake) G.speed -= MAX * P.brake * dt;
+    if (brake) G.speed -= MAX * P.brake * (wet ? RAIN.brake : 1) * dt;
     else if (!gas) G.speed -= MAX * P.decel * dt;
     const road = nearestRoad(s, G.px);
     const nx = (G.px - road) / RW;
@@ -314,10 +331,22 @@
 
     // direksiyon ve savrulma
     const sp2 = G.speed / MAX;
-    const steerPow = Math.min(1, sp2 * 2.5);
+    const steerPow = Math.min(1, sp2 * 2.5) * (G.slipT > 0 ? 0.45 : 1);
     G.px += steer * dt * P.steer * steerPow * RW;
-    const pull = dt * P.steer * sp2 * sp2 * s.curve * P.centri * RW;
+    const pull = dt * P.steer * sp2 * sp2 * s.curve * P.centri * (wet ? RAIN.centri : 1) * RW;
     G.px -= pull;
+    // su birikintisine girince araba yana kayar
+    G.slipT = Math.max(0, G.slipT - dt); G.splashT = Math.max(0, G.splashT - dt);
+    if (G.slipT > 0) G.px += G.slipDir * RAIN.puddleSlip * sp2 * dt * RW;
+    if (s.puddle && G.phase === 'race' && sp2 > 0.25 && !s.puddle.hit) {
+      const pn = (G.px - s.cx) / RW;
+      if (Math.abs(pn - s.puddle.x) < s.puddle.w / 2 + P.playerW / 2) {
+        s.puddle.hit = true;
+        G.slipT = 0.45; G.slipDir = G.rand() < 0.5 ? -1 : 1; G.splashT = 0.4;
+        G.speed *= 0.93;
+        ev(G, 'splash');
+      }
+    }
     G.steerVis += (steer - G.steerVis) * Math.min(1, dt * 10);
     // sert virajda lastik sesi
     G.skid = (Math.abs(s.curve) > 3 && sp2 > 0.7 && Math.abs(steer) > 0.6) || (brake && sp2 > 0.5) ? 1 : 0;
@@ -394,7 +423,7 @@
   function kmh(G) { return Math.round(G.speed * KMH); }
 
   root.BY = {
-    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, CAR_KINDS, LANE_X, EDGE_X, HIT, START_TIME, EXTEND, TIMING,
+    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, WEATHERS, RAIN, CAR_KINDS, LANE_X, EDGE_X, HIT, START_TIME, EXTEND, TIMING,
     newRace, step, segAt, roadsAt, nearestRoad, limits, kmh, curStage,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

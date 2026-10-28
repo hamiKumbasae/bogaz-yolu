@@ -116,6 +116,23 @@
     siren.g.gain.setTargetAtTime(muted ? 0 : level * level * 0.03, t, 0.15);
   }
 
+  // ---------------- yağmur ----------------
+  let rain = null;
+  function rainSet(level) {
+    if (!ac) return;
+    const t = ac.currentTime;
+    if (!(level > 0.001)) { if (rain) rain.g.gain.setTargetAtTime(0, t, 0.3); return; }
+    if (!rain) {
+      const n = ac.createBufferSource(); n.buffer = nbuf(); n.loop = true;
+      const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1800;
+      const f2 = ac.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = 7000;
+      const g = ac.createGain(); g.gain.value = 0;
+      n.connect(f).connect(f2).connect(g).connect(sfxBus); n.start();
+      rain = { g };
+    }
+    rain.g.gain.setTargetAtTime(muted ? 0 : level * 0.06, t, 0.3);
+  }
+
   // ---------------- efektler ----------------
   const last = {};
   function sfx(name) {
@@ -142,6 +159,9 @@
       case 'move': osc('pulse', 880, t, 0.04, 0.05, B); break;
       case 'pause': seq([72, 79], 0.07, 'triangle', 0.2); break;
       case 'letter': osc('pulse', 1200, t, 0.03, 0.05, B); break;
+      case 'splash': noise(t, 0.35, 0.22, 2600, B, 'bandpass'); noise(t + 0.05, 0.25, 0.12, 900, B); break;
+      // sisli Boğaz'da uzaktan vapur düdüğü: iki pes ton, yavaş açılıp kapanır
+      case 'duduk': for (const [f, v] of [[98, 0.07], [147, 0.05], [196, 0.025]]) osc('sawtooth', f, t, 1.9, v, B, 0.98, 0.25); break;
     }
   }
 
@@ -216,7 +236,7 @@
   }
 
   root.BY_AUDIO = {
-    unlock: ctx, sfx, engineStart, engineUpdate, engineStop, playRadio, stopRadio, STATIONS, siren: sirenSet,
+    unlock: ctx, sfx, engineStart, engineUpdate, engineStop, playRadio, stopRadio, STATIONS, siren: sirenSet, rain: rainSet,
     get muted() { return muted; }, setMuted, current: () => (cur ? cur.i : null),
   };
 })(window);

@@ -23,7 +23,67 @@
     if (!c) { c = ART.mix(col, haze, q / 31); fogCache.set(key, c); if (fogCache.size > 4000) fogCache.clear(); }
     return c;
   }
-  // gökyüzü: saat başına bir kez, cihaz ölçeğinde
+  // hava: render başında ayarlanır
+  const WX = { night: false, fog: false, wet: false };
+  // uzaklığa göre sis miktarı (0..1). Sisli havada görüş çok kısa, yağmurda biraz kısa.
+  function fogAmt(n, tun) {
+    if (WX.fog && !tun) { const f = Math.min(1, n / DRAW / 0.36); return Math.pow(f, 0.85) * 0.98; }
+    if (WX.wet && !tun) { const f = Math.min(1, Math.max(0, (n / DRAW - 0.05) / 0.75)); return f > 0 ? Math.pow(f, 1.2) * 0.92 : 0; }
+    const f = Math.min(1, Math.max(0, (n / DRAW - 0.2) / 0.8));
+    return f > 0 ? Math.pow(f, 1.4) * 0.9 : 0;
+  }
+  // geceleri ve yağmurda sabit renkler (asfalt, çizgi, bordür) koyulaşır
+  const dkCache = new Map();
+  function dk(c) {
+    if (!WX.night && !WX.wet) return c;
+    const key = c + (WX.night ? 'n' : 'w');
+    let v = dkCache.get(key);
+    if (!v) { v = WX.night ? ART.mix(c, '#0a0e24', 0.64) : ART.mix(c, '#262a34', 0.2); dkCache.set(key, v); }
+    return v;
+  }
+  // hava durumuna göre renkler: gece kendi paleti (TIMES[4]); yağmur griye, sis beyaza çekilir
+  const palCache = new Map();
+  function palette(time, wx) {
+    const key = time + wx;
+    let T = palCache.get(key);
+    if (T) return T;
+    const B = ART.TIMES[time], m = ART.mix;
+    if (wx === 'yagmur') {
+      T = Object.assign({}, B, { sky: [m(B.sky[0], '#4a505c', 0.8), m(B.sky[1], '#8a909a', 0.75)], sea: m(B.sea, '#3a4a58', 0.55), seaDark: m(B.seaDark, '#2e3c48', 0.55),
+        haze: m(B.haze, '#8c929a', 0.75), shore: m(B.shore, '#5a6068', 0.5), shore2: m(B.shore2, '#70767e', 0.55),
+        park: B.park.map((c) => m(c, '#2a3a2a', 0.25)), forest: B.forest.map((c) => m(c, '#1e2e22', 0.25)), pave: B.pave.map((c) => m(c, '#4a4e56', 0.3)), noSun: true });
+    } else if (wx === 'sis') {
+      T = Object.assign({}, B, { sky: [m(B.sky[0], '#b4bac0', 0.85), m(B.sky[1], '#d6dade', 0.85)], sea: m(B.sea, '#8a9aa6', 0.6), seaDark: m(B.seaDark, '#7a8a96', 0.6),
+        haze: '#d2d6da', shore: m(B.shore, '#b8bec4', 0.6), shore2: m(B.shore2, '#c8ccd0', 0.7), noSun: true });
+    } else T = B;
+    palCache.set(key, T);
+    return T;
+  }
+  // sis perdesi: nesnenin silueti sis renginde; nesnenin üstüne fa saydamlığıyla çizilir
+  const hazeCache = new WeakMap();
+  function hazeOf(img, col) {
+    let m = hazeCache.get(img);
+    if (!m) { m = new Map(); hazeCache.set(img, m); }
+    let c = m.get(col);
+    if (!c) {
+      c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.lw = img.lw; c.lh = img.lh;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+      m.set(col, c);
+    }
+    return c;
+  }
+  function addGlow(ctx, x, y, r, col) {
+    if (r < 0.3) return;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(ART.glow(col), x - r, y - r, r * 2, r * 2);
+    ctx.restore();
+  }
+  // gece stop lambalarının yüksekliği (aracın boyuna oranla, alttan) ve yanlara açıklığı
+  const TAIL = { araba: [0.6, 0.35], taksi: [0.6, 0.35], dolmus: [0.33, 0.38], otobus: [0.35, 0.4], kamyon: [0.17, 0.38], motor: [0.25, 0], motosiklet: [0.27, 0], polis: [0.55, 0.35],
+    polis_motor: [0.27, 0], metrobus: [0.3, 0.4], tramvay: [0.27, 0.4], bisiklet: [0.3, 0], scooter: [0.25, 0] };
+
+  // gökyüzü: saat ve hava başına bir kez, cihaz ölçeğinde
   const skyCache = new Map();
   function sky(T, i) {
     const key = i + '@' + ART.S;
@@ -79,9 +139,9 @@
     const Y1 = Math.round(p.Y1 * S) / S, Y2 = Math.round(p.Y2 * S) / S;
     const tun = s.sea === 'T';
     if (p.tallOnly || (Y1 <= Y2 && !p.hidden)) return;
-    const f = Math.min(1, Math.max(0, (n / DRAW - 0.2) / 0.8));
-    const fa = f > 0 ? Math.pow(f, 1.4) * 0.9 : 0;
+    const fa = fogAmt(n, tun);
     const C = tun ? (c) => fog(c, TUN_HAZE, Math.min(1, fa * 1.1)) : (c) => fog(c, T.haze, fa);
+    const CF = tun ? C : (c) => C(dk(c));
     const X2e = X2, W2e = W2;
     const B = (a1, b1, a2, b2, col) => band(ctx, X1, Y1, a1 * W1, b1 * W1, X2e, Y2, a2 * W2e, b2 * W2e, col);
     const forkU = s.fork / RW;
@@ -97,13 +157,13 @@
       const pave = C(light ? T.pave[0] : T.pave[1]);
       const seaC = C(light ? T.sea : T.seaDark);
       if (seaR) {
-        B(hi, hi + 0.3, hi, hi + 0.3, s.sea === 'B' ? C('#8a8a92') : pave);
+        B(hi, hi + 0.3, hi, hi + 0.3, s.sea === 'B' ? CF('#8a8a92') : pave);
         band(ctx, X1, Y1, (hi + 0.3) * W1, W * 4, X2e, Y2, (hi + 0.3) * W2e, W * 4, seaC);
       }
       // Galata Köprüsü'nde tramvay solda: sol kaldırım ve deniz tramvay yolunun dışında başlar
       const wl = water && s.tram < 0 ? TRAM_W : 0;
       if (seaL) {
-        B(lo - 0.3 - wl, lo - wl, lo - 0.3 - wl, lo - wl, s.sea === 'B' ? C('#8a8a92') : pave);
+        B(lo - 0.3 - wl, lo - wl, lo - 0.3 - wl, lo - wl, s.sea === 'B' ? CF('#8a8a92') : pave);
         band(ctx, X1, Y1, -W * 4, (lo - 0.3 - wl) * W1, X2e, Y2, -W * 4, (lo - 0.3 - wl) * W2e, seaC);
       }
       if (water) {
@@ -115,42 +175,49 @@
         // T1 tramvay yolu: taş döşeli yatak, iki ray, dış kenarda bordür
         const t = s.tram, e = t < 0 ? lo : hi;
         const a = Math.min(e, e + t * TRAM_W), b = Math.max(e, e + t * TRAM_W);
-        B(a, b, a, b, C(light ? '#a8a092' : '#a09888'));
+        B(a, b, a, b, CF(light ? '#a8a092' : '#a09888'));
         const o = e + t * TRAM_W;
-        B(Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), C('#dcd6ca'));
-        for (const q of [0.38, 0.86]) { const c0 = e + t * q; B(c0 - 0.025, c0 + 0.025, c0 - 0.025, c0 + 0.025, C('#4e4a54')); }
+        B(Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), Math.min(o, o - t * 0.1), Math.max(o, o - t * 0.1), CF('#dcd6ca'));
+        for (const q of [0.38, 0.86]) { const c0 = e + t * q; B(c0 - 0.025, c0 + 0.025, c0 - 0.025, c0 + 0.025, CF('#4e4a54')); }
       }
       if (hwy) {
         // banket ve beton ayaklar; E-5'te solda metrobüs yolu ve karşı bariyer
-        const conc = C(light ? '#c4bfb4' : '#b8b3a8');
+        const conc = CF(light ? '#c4bfb4' : '#b8b3a8');
         B(hi, hi + 0.22, hi, hi + 0.22, conc);
         B(lo - 0.22, lo, lo - 0.22, lo, conc);
         if (s.land === 'e5') {
-          B(lo - 1.42, lo - 0.22, lo - 1.42, lo - 0.22, C(light ? '#5c5c66' : '#585862'));
-          if (light) B(lo - 0.84, lo - 0.8, lo - 0.84, lo - 0.8, C('#e8c84a'));
+          B(lo - 1.42, lo - 0.22, lo - 1.42, lo - 0.22, CF(light ? '#5c5c66' : '#585862'));
+          if (light) B(lo - 0.84, lo - 0.8, lo - 0.84, lo - 0.8, CF('#e8c84a'));
           B(lo - 1.62, lo - 1.42, lo - 1.62, lo - 1.42, conc);
         }
       }
-      if (tun) B(lo - 0.25, hi + 0.25, lo - 0.25, hi + 0.25, C(light ? '#7a7e8a' : '#727682'));
+      if (tun) B(lo - 0.25, hi + 0.25, lo - 0.25, hi + 0.25, CF(light ? '#7a7e8a' : '#727682'));
       // öteki kolun kuyruğu (ayrımdan sonra uzaklaşır)
       if (s.tail !== null && s.tail !== undefined && s.tailA > 0) {
         const off = (s.tail - s.cx) / RW;
         ctx.globalAlpha = s.tailA;
-        B(off - 1.1, off + 1.1, off - 1.1, off + 1.1, C(light ? '#ece8e0' : '#cc3a2e'));
-        B(off - 1, off + 1, off - 1, off + 1, C(light ? '#6a6a72' : '#646470'));
+        B(off - 1.1, off + 1.1, off - 1.1, off + 1.1, CF(light ? '#ece8e0' : '#cc3a2e'));
+        B(off - 1, off + 1, off - 1, off + 1, CF(light ? '#6a6a72' : '#646470'));
         ctx.globalAlpha = 1;
       }
       // kenar taşları (kırmızı-beyaz), asfalt, şerit çizgileri
-      const rumble = C(light ? '#ece8e0' : '#cc3a2e');
+      const rumble = CF(light ? '#ece8e0' : '#cc3a2e');
       for (const c of roads) B(c - 1.1, c + 1.1, c - 1.1, c + 1.1, rumble);
-      const asph = C(light ? '#6a6a72' : '#646470');
+      const asph = CF(light ? '#6a6a72' : '#646470');
       for (const c of roads) B(c - 1, c + 1, c - 1, c + 1, asph);
       if (light) {
         const lw1 = Math.max(0.25, W1 * 0.025), lw2 = Math.max(0.25, W2e * 0.025);
-        const lc = C('#f4f2ec');
+        const lc = CF('#f4f2ec');
         for (const c of roads) for (const l of [-1 / 3, 1 / 3]) band(ctx, X1, Y1, (c + l) * W1 - lw1, (c + l) * W1 + lw1, X2e, Y2, (c + l) * W2e - lw2, (c + l) * W2e + lw2, lc);
       }
-      if (s.line) B(-1, 1, -1, 1, C(s.line));
+      if (s.puddle) {
+        // su birikintisi: dört şeride yayılan, uçlara doğru daralan parlak leke
+        const k = s.puddleK || 0, hw = s.puddle.w / 2, x0 = s.puddle.x;
+        const a = [0.45, 0.9, 1, 0.75][k] * hw, b = [0.9, 1, 0.75, 0.3][k] * hw;
+        band(ctx, X1, Y1, (x0 - a) * W1, (x0 + a) * W1, X2e, Y2, (x0 - b) * W2e, (x0 + b) * W2e, C(WX.night ? '#2e3a5c' : '#9aaabd'));
+        if (k === 1) band(ctx, X1, Y1, (x0 - a * 0.5) * W1, (x0 + a * 0.1) * W1, X2e, Y2, (x0 - b * 0.5) * W2e, (x0 + b * 0.1) * W2e, C(WX.night ? '#4a5a84' : '#c8d6e4'));
+      }
+      if (s.line) B(-1, 1, -1, 1, CF(s.line));
     }
     if (tun) {
       // tünel: duvarlar (alt kaplama, şerit, üst kaplama), pahlar (lamba sırası) ve tavan
@@ -222,8 +289,11 @@
     const camY = playerY + CAM_H;
     const base = BY.segAt(G, camZ);
     const basePct = (camZ % SEG) / SEG;
-    const time = TR.STAGES[ps.stage].time;
-    const T = ART.TIMES[time];
+    const wx = G.weather || 'acik';
+    WX.night = wx === 'gece'; WX.fog = wx === 'sis'; WX.wet = wx === 'yagmur';
+    const night = WX.night;
+    const time = night ? 4 : TR.STAGES[ps.stage].time;
+    const T = palette(time, wx);
     const bgX = G.bgX || 0;
 
     // yol: önce görünür şeritleri yakından uzağa hesapla (tepe arkasında kalanlar atlanır; tünelde tavanları yine gerekir)
@@ -240,7 +310,7 @@
       const X1 = HW + sc1 * (s.cx - G.px + xa) * HW, X2 = HW + sc2 * (s.cx - G.px + xb) * HW;
       const Y1 = HH - sc1 * (s.y1 - camY) * HH, Y2 = HH - sc2 * (s.y2 - camY) * HH;
       const W1 = sc1 * RW * HW, W2 = sc2 * RW * HW;
-      const p = { X1, Y1, W1, X2, Y2, W2, sc1, sc2, maxy, n };
+      const p = { X1, Y1, W1, X2, Y2, W2, sc1, sc2, maxy, n, fa: fogAmt(n, s.sea === 'T') };
       if (Y2 >= Y1 || Y2 >= maxy) {
         // görünmeyen şerit (tepe arkasında ya da göz hizasının üstünde): tünelde tavanı, yüksek simgelerde
         // (cami, kule) tepeden taşan üstü yine çizilir
@@ -264,19 +334,29 @@
     if (camTun) {
       ctx.fillStyle = TUN_HAZE; ctx.fillRect(0, 0, W, H);
     } else {
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(sky(T, time), 0, 0); ctx.restore();
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(sky(T, time + wx), 0, 0); ctx.restore();
       ctx.fillStyle = T.sky[1]; ctx.fillRect(0, HH, W, HH);
       const sx = ((W * 0.68 - bgX * 0.25) % (W * 2) + W * 2) % (W * 2) - W * 0.3;
-      const glow = ctx.createRadialGradient(sx, T.sun.y, T.sun.r * 0.6, sx, T.sun.y, T.sun.r * 4);
-      glow.addColorStop(0, ART.mix(T.sun.c, T.sky[1], 0.2) + 'cc'); glow.addColorStop(1, T.sun.c + '00');
-      ctx.fillStyle = glow; ctx.fillRect(sx - T.sun.r * 4, T.sun.y - T.sun.r * 4, T.sun.r * 8, T.sun.r * 8);
-      ART.circ(ctx, sx, T.sun.y, T.sun.r, T.sun.c, null);
-      tile(ctx, ART.clouds(time), bgX * 0.3, 4);
+      if (!T.noSun) {
+        const glow = ctx.createRadialGradient(sx, T.sun.y, T.sun.r * 0.6, sx, T.sun.y, T.sun.r * 4);
+        glow.addColorStop(0, ART.mix(T.sun.c, T.sky[1], 0.2) + (night ? '44' : 'cc')); glow.addColorStop(1, T.sun.c + '00');
+        ctx.fillStyle = glow; ctx.fillRect(sx - T.sun.r * 4, T.sun.y - T.sun.r * 4, T.sun.r * 8, T.sun.r * 8);
+        ART.circ(ctx, sx, T.sun.y, T.sun.r, T.sun.c, null);
+        // gece hilal: ayın üstüne, o yükseklikteki gökyüzü renginde ikinci bir daire
+        if (night) ART.circ(ctx, sx + T.sun.r * 0.5, T.sun.y - T.sun.r * 0.18, T.sun.r * 0.86, ART.mix(T.sky[0], T.sky[1], T.sun.y / HH), null);
+      }
+      if (!WX.fog) tile(ctx, ART.clouds(time, WX.wet ? 'rain' : ''), bgX * 0.3, 4);
       const pan = ART.panorama(time, ps.stage % 3, TR.STAGES[ps.stage].pano);
       tile(ctx, pan, bgX * 0.6, HH - pan.lh + 2);
+      if (WX.fog || WX.wet) {
+        const y0 = HH - pan.lh - 6;
+        ctx.globalAlpha = WX.fog ? 0.86 : 0.42;
+        ctx.fillStyle = ART.lgrad(ctx, 0, y0, 0, HH, [[0, T.haze + '00'], [0.45, T.haze], [1, T.haze]]);
+        ctx.fillRect(0, y0, W, HH - y0 + 4); ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = ART.lgrad(ctx, 0, HH, 0, H, [[0, ART.mix(T.sea, T.haze, 0.35)], [0.25, T.sea], [1, T.seaDark]]);
       ctx.fillRect(0, HH + 1.5, W, HH);
-      if (time >= 2) {
+      if (time >= 2 && !T.noSun) {
         ctx.globalAlpha = 0.45; ctx.fillStyle = T.sun.c;
         for (let k = 0; k < 4; k++) { const w = 22 - k * 5; ctx.fillRect(sx - w / 2 + Math.sin(k * 2 + bgX * 0.01) * 2, HH + 3 + k * 2.6, w, 0.9); }
         ctx.globalAlpha = 1;
@@ -319,6 +399,13 @@
       const s = drawn[k], p = s.vis;
       if (p.hidden && !p.tallOnly) continue;
       const clip = p.maxy;
+      // sisli ve yağmurlu havada uzaktaki nesneler sise karışır (üstlerine sis renginde siluet biner)
+      const hz = WX.fog ? p.fa : WX.wet ? p.fa * 0.85 : 0;
+      if (hz > 0.97) continue;
+      const put = (img, x0, y0, w0, fl) => {
+        drawSprite(ctx, img, x0, y0, w0, clip, fl);
+        if (hz > 0.02) { ctx.globalAlpha = hz; drawSprite(ctx, hazeOf(img, T.haze), x0, y0, w0, clip, fl); ctx.globalAlpha = 1; }
+      };
       for (const sp of s.sprites) {
         const size = ART.SIZE[sp.k];
         if (!size || (p.tallOnly && !TALL[sp.k])) continue;
@@ -328,16 +415,24 @@
           const top = p.Y1 - sp.h * 8000 * p.sc1 * HH;
           const lw = Math.max(0.4, p.W1 * 0.02);
           if (sxp < -50 || sxp > W + 50) continue;
-          if (top < clip) { ctx.fillStyle = '#e2ded6'; ctx.fillRect(sxp - lw / 2, top, lw, Math.min(p.Y1, clip) - top); }
+          // gece köprünün halatları renk renk ışıklanır
+          const cc = night ? `hsl(${Math.round((s.i * 2.5 + G.t * 50) % 360)},85%,62%)` : hz > 0.02 ? fog('#e2ded6', T.haze, hz) : null;
+          if (top < clip) { ctx.fillStyle = cc || '#e2ded6'; ctx.fillRect(sxp - lw / 2, top, lw, Math.min(p.Y1, clip) - top); }
           const side = sp.x < 0 ? '-1' : '1';
           const prev = cableTop[side];
-          if (prev && top < clip) { ctx.strokeStyle = '#eeeae2'; ctx.lineWidth = Math.max(0.8, lw * 2); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(sxp, top); ctx.stroke(); }
+          if (prev && top < clip) { ctx.strokeStyle = cc || '#eeeae2'; ctx.lineWidth = Math.max(0.8, lw * 2); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(sxp, top); ctx.stroke(); }
           cableTop[side] = [sxp, top];
           continue;
         }
         const w = size * RW * p.sc1 * HW;
         if (w < 0.4 || sxp + w < -20 || sxp - w > W + 20) continue;
-        drawSprite(ctx, ART.sprite(sp.k, sp, w * S), sxp, p.Y1, w, clip, sp.flip && !NOFLIP[sp.k]);
+        put(ART.sprite(sp.k, sp, w * S, night), sxp, p.Y1, w, sp.flip && !NOFLIP[sp.k]);
+        // gece sokak lambaları yanar
+        if (night && (sp.k === 'lamba' || sp.k === 'otoyol_lamba') && w > 0.5) {
+          const L = sp.k === 'lamba' ? [100 / 24, 8 / 24, 26 / 100] : [160 / 40, 11 / 40, 17 / 160];
+          const h = w * L[0], gy = p.Y1 - h + L[2] * h;
+          if (gy < clip) addGlow(ctx, sxp + (sp.flip ? -1 : 1) * L[1] * w, gy, h * 0.3, 'rgba(255,214,140,0.9)');
+        }
       }
       const segCars = p.tallOnly ? null : carsBySeg.get(s.i);
       if (segCars) {
@@ -351,7 +446,18 @@
           if (Y < clip && w > 2) ART.ell(ctx, cx, Y - w * 0.02, w * 0.55, Math.max(0.5, w * 0.06), 'rgba(0,0,0,0.3)', null);
           // polis araçlarının çakarı yanıp söner (her aracın kendi ritmi)
           const col = c.police ? Math.floor(G.t * 5 + c.z / SEG * 0.37) % 2 : c.color;
-          drawSprite(ctx, ART.car(c.kind, col, w * S), cx, Y, w, clip, false);
+          put(ART.car(c.kind, col, w * S, night), cx, Y, w, false);
+          if (Y < clip && w > 1.5) {
+            const sz = ART.CAR_DEF[c.kind] || [72, 44], h = w * sz[1] / sz[0];
+            // gece stop lambaları
+            if (night || WX.fog || WX.wet) {
+              const [ty, tx] = TAIL[c.kind] || TAIL.araba, gy = Y - h * ty, r = w * (night ? 0.24 : 0.15);
+              const tc = night ? 'rgba(255,60,40,0.85)' : `rgba(255,60,40,${(0.5 * (1 - hz)).toFixed(2)})`;
+              if (tx) { addGlow(ctx, cx - tx * w, gy, r, tc); addGlow(ctx, cx + tx * w, gy, r, tc); } else addGlow(ctx, cx, gy, r * 0.8, tc);
+            }
+            // çakar ışığı
+            if (c.police) addGlow(ctx, cx + (col ? 0.12 : -0.12) * w, Y - h * (c.kind === 'polis' ? 0.86 : 0.97), w * (night ? 0.7 : 0.35), col ? 'rgba(70,130,255,0.9)' : 'rgba(255,70,50,0.9)');
+          }
         }
       }
     }
@@ -359,6 +465,22 @@
 
     // oyuncu arabası
     if (!opts.noPlayer) drawPlayer(ctx, G, ps, playerY, camY, opts);
+    // yağmur damlaları (tünelde yok)
+    if (WX.wet && !camTun && ps.sea !== 'T') {
+      const sp = G.speed / MAX, tt = G.t;
+      ctx.strokeStyle = 'rgba(214,224,240,0.45)'; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let k = 0; k < 120; k++) {
+        const rx = (k * 0.6180339) % 1, ry = (k * 0.7548777) % 1, v = 230 + (k % 5) * 35;
+        const x = ((rx * W * 1.2 - tt * (30 + 50 * sp) + bgX * 0.4) % W + W) % W;
+        const y = ((ry * H + tt * v) % H + H) % H;
+        const len = 5 + sp * 9;
+        ctx.moveTo(x, y); ctx.lineTo(x - 1.2 - sp * 2.5, y + len);
+      }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(40,50,70,0.08)'; ctx.fillRect(0, 0, W, H);
+    }
+    if (WX.fog && !camTun) { ctx.fillStyle = 'rgba(214,218,222,0.1)'; ctx.fillRect(0, 0, W, H); }
     // toz / duman
     for (let i = fx.length - 1; i >= 0; i--) {
       const f = fx[i];
@@ -378,14 +500,39 @@
     let bounce = 0;
     if (G.offroad && sp > 0.1) bounce = Math.random() < 0.5 ? -0.8 : 0.8;
     else if (sp > 0.05 && Math.random() < sp * 0.15) bounce = -0.6;
-    const img = ART.player(G.phase === 'crash' ? (Math.floor(G.crashT * 10) % 2 ? 2 : -2) * G.crashDir : turn, opts.brake || G.phase === 'crash', opts.color || 'kirmizi');
+    const braking = opts.brake || G.phase === 'crash';
+    const img = ART.player(G.phase === 'crash' ? (Math.floor(G.crashT * 10) % 2 ? 2 : -2) * G.crashDir : turn, braking, opts.color || 'kirmizi', WX.night);
     const x = Math.round((HW - img.lw / 2) * S) / S, y = Math.round((groundY - img.lh + 2 + bounce) * S) / S;
+    // gece farların yolu aydınlatması
+    if (WX.night && !opts.noLights) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const yTop = Math.max(HH + 6, groundY - 120);
+      ctx.fillStyle = ART.lgrad(ctx, 0, groundY - 30, 0, yTop, [[0, 'rgba(255,236,190,0.26)'], [1, 'rgba(255,236,190,0)']]);
+      ctx.beginPath(); ctx.moveTo(HW - 34, groundY - 30); ctx.lineTo(HW + 34, groundY - 30); ctx.lineTo(HW + 110, yTop); ctx.lineTo(HW - 110, yTop); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
     ART.ell(ctx, HW, groundY, 47, 4.2, 'rgba(0,0,0,0.35)', null);
     if (G.phase === 'crash') {
       const a = Math.sin(G.crashT * 14) * 0.25 * Math.max(0, 1 - G.crashT / 1.6) * G.crashDir;
       ctx.save(); ctx.translate(HW, groundY - 20); ctx.rotate(a); ctx.drawImage(img, -img.lw / 2, -img.lh + 22, img.lw, img.lh); ctx.restore();
       if (Math.random() < 0.5) fx.push({ x: HW + (Math.random() - 0.5) * 60, y: groundY - 6, vx: (Math.random() - 0.5) * 1.2, vy: -0.6, r: 3, t: 0, life: 0.8, c: '#ece8e0' });
-    } else ctx.drawImage(img, x, y, img.lw, img.lh);
+    } else {
+      ctx.drawImage(img, x, y, img.lw, img.lh);
+      // yağmurda arka cam sileceği
+      if (WX.wet) {
+        const t = turn * 2.6, px = x + 48 + t, py = y + 12.2, a = Math.sin(G.t * 3.4) * 1.15;
+        ctx.strokeStyle = '#1c1626'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.sin(a) * 23, py - Math.abs(Math.cos(a)) * 7.2); ctx.stroke();
+      }
+    }
+    // stop lambaları (gece ve kötü havada parlar)
+    if (WX.night || WX.fog || WX.wet) {
+      const a = braking ? 0.95 : WX.night ? 0.6 : 0.35;
+      for (const gx of [x + 19, x + 77]) addGlow(ctx, gx, y + 19.5, braking ? 22 : 15, `rgba(255,60,40,${a})`);
+    }
+    // su sıçraması ve tekerlek serpintisi
+    if (G.splashT > 0.2) for (let k = 0; k < 3; k++) fx.push({ x: HW + (Math.random() < 0.5 ? -38 : 38) + (Math.random() - 0.5) * 10, y: groundY - 4, vx: (Math.random() - 0.5) * 2.4, vy: -1.4 - Math.random(), r: 2.4, t: 0, life: 0.55, c: '#e4eef8' });
+    if (WX.wet && sp > 0.35 && ps.sea !== 'T' && Math.random() < sp * 0.8) fx.push({ x: HW + (Math.random() < 0.5 ? -34 : 34), y: groundY - 3, vx: (Math.random() - 0.5) * 0.8, vy: -0.5, r: 1.8, t: 0, life: 0.45, c: '#c8d4e2' });
     if (G.offroad && sp > 0.15 && Math.random() < 0.6) fx.push({ x: HW + (Math.random() < 0.5 ? -36 : 36), y: groundY - 4, vx: (Math.random() - 0.5) * 0.8, vy: -0.4, r: 2, t: 0, life: 0.6, c: G.offroadColor || '#c8b890' });
     if (G.skid && Math.random() < 0.7) fx.push({ x: HW + (Math.random() < 0.5 ? -34 : 34), y: groundY - 3, vx: (Math.random() - 0.5) * 0.6, vy: -0.3, r: 2, t: 0, life: 0.5, c: '#f4f4f4' });
   }

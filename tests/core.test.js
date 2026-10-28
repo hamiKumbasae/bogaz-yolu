@@ -218,6 +218,41 @@ function commonStageChecks(st, S) {
   ok(edgeOnHwy === 0, 'bisiklet ve scooter otoyolda, köprüde, tünelde yok (' + edgeOnHwy + ')');
 }
 
+// ---------- hava ----------
+{
+  ok(BY.newRace({ seed: 1 }).weather === 'acik', 'hava varsayılan olarak açık');
+  ok(BY.newRace({ seed: 1, weather: 'kar' }).weather === 'acik', 'bilinmeyen hava açığa döner');
+  const dry = BY.newRace({ seed: 5, course: 'tur', weather: 'gece' });
+  ok(dry.track.every((s) => !s.puddle), 'yağmur yokken su birikintisi yok');
+  const wet = BY.newRace({ seed: 5, course: 'tur', weather: 'yagmur' });
+  const pud = wet.track.filter((s) => s.puddle);
+  ok(pud.length > 20 && pud.every((s) => s.sea !== 'T'), `yağmurda su birikintileri var, tünelde yok (${pud.length})`);
+  ok(pud.every((s) => Math.abs(s.puddle.x) < 1), 'su birikintileri yolun üstünde');
+  // virajda yağmurda daha çok savrulur
+  const drift = (weather) => {
+    const G = BY.newRace({ seed: 3, weather }); run(G, NONE, 3.5); G.cars = [];
+    const i = G.track.findIndex((s, k) => k > 80 && Math.abs(s.curve) > 3 && !s.puddle);
+    G.pos = G.track[i].z - PLAYER_Z; G.speed = MAX; G.px = G.track[i].cx;
+    run(G, { steer: 0, gas: 1 }, 0.3);
+    return Math.abs((G.px - BY.segAt(G, G.pos + PLAYER_Z).cx) / RW);
+  };
+  ok(drift('yagmur') > drift('acik') * 1.15, 'yağmurda virajda daha çok kayar');
+  // su birikintisine girince kayar ve sıçrama olur
+  const G = BY.newRace({ seed: 9, course: 'tur', weather: 'yagmur' }); run(G, NONE, 3.5); G.cars = [];
+  const pi = G.track.findIndex((s) => s.puddle && s.puddleK === 0);
+  const ps = G.track[pi];
+  G.pos = G.track[pi - 3].z - PLAYER_Z; G.px = ps.cx + ps.puddle.x * RW; G.speed = MAX * 0.8;
+  let splash = false;
+  run(G, (g) => { if (g.ev.some((e) => e.e === 'splash')) splash = true; g.cars = []; return { steer: 0, gas: 1 }; }, 0.5);
+  ok(splash, 'su birikintisinde sıçrama ve kayma');
+  // botla yağmurda bir Boğaz rotası ve tur
+  for (const [course, ch] of [['bogaz', [1, 0, 1]], ['tur', []]]) {
+    const R = BY.newRace({ seed: 41, course, weather: 'yagmur' });
+    run(R, (g) => bot(ch)(g), 900, (g) => g.result);
+    ok(R.result === 'goal', `${course}: yağmurda bot bitirdi (${R.result}, kalan ${R.time.toFixed(1)} sn)`);
+  }
+}
+
 // ---------- bot: bütün rotalar süresinde bitiyor mu ----------
 {
   const results = [];

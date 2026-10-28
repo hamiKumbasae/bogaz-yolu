@@ -36,7 +36,11 @@
   };
   const COLORS = ['kirmizi', 'beyaz', 'turkuaz'];
   const COLOR_NAMES = { kirmizi: 'KIRMIZI', beyaz: 'BEYAZ', turkuaz: 'TURKUAZ' };
-  const settings = Object.assign({ radio: 0, color: 'kirmizi', tilt: false, autoGas: coarse, course: 'bogaz' }, store.get('by-ayar', {}));
+  const settings = Object.assign({ radio: 0, color: 'kirmizi', tilt: false, autoGas: coarse, course: 'bogaz', weather: 'acik' }, store.get('by-ayar', {}));
+  const WEATHER_OPTS = ['acik', 'sis', 'yagmur', 'gece', 'rastgele'];
+  const WEATHER_NAMES = { acik: 'AÇIK', sis: 'SİS', yagmur: 'YAĞMUR', gece: 'GECE', rastgele: 'RASTGELE' };
+  if (!WEATHER_OPTS.includes(settings.weather)) settings.weather = 'acik';
+  const pickWeather = () => (settings.weather === 'rastgele' ? BY.WEATHERS[Math.floor(Math.random() * BY.WEATHERS.length)] : settings.weather);
   if (!TR.COURSES[settings.course]) settings.course = 'bogaz';
   const saveSettings = () => store.set('by-ayar', settings);
 
@@ -247,7 +251,7 @@
 
   function newDemo() {
     const choices = [Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0];
-    app.demo = BY.newRace({ seed: Math.floor(Math.random() * 1e6), course: Math.random() < 0.5 ? 'bogaz' : 'tur' });
+    app.demo = BY.newRace({ seed: Math.floor(Math.random() * 1e6), course: Math.random() < 0.5 ? 'bogaz' : 'tur', weather: pickWeather() });
     app.demo.bot = BOT(choices); app.demo.bgX = 0; app.demoT = 0;
     app.demo.countT = 0.01; // gösteride geri sayım yok
   }
@@ -255,7 +259,8 @@
     AU.unlock();
     course = TR.COURSES[course] ? course : settings.course;
     if (settings.course !== course) { settings.course = course; saveSettings(); }
-    app.G = BY.newRace({ seed: Math.floor(Math.random() * 1e9), course });
+    app.G = BY.newRace({ seed: Math.floor(Math.random() * 1e9), course, weather: pickWeather() });
+    app.hornT = 4 + Math.random() * 6;
     app.G.bgX = 0;
     app.screen = 'race'; app.lastStage = -1; app.banner = null;
     AU.engineStart();
@@ -287,6 +292,10 @@
     const items = [
       { label: 'BOĞAZ YOLU', act: () => startRace('bogaz'), course: 'bogaz' },
       { label: 'İSTANBUL TURU', act: () => startRace('tur'), course: 'tur' },
+      { label: 'HAVA: ' + WEATHER_NAMES[settings.weather], adjust: (d) => {
+        const i = WEATHER_OPTS.indexOf(settings.weather), n = WEATHER_OPTS.length;
+        settings.weather = WEATHER_OPTS[(i + (d < 0 ? n - 1 : 1)) % n]; saveSettings(); newDemo();
+      } },
       { label: 'RADYO: ' + radioName(), adjust: (d) => nextRadio(d) },
       { label: 'ARABA: ' + COLOR_NAMES[settings.color], adjust: (d) => { const i = COLORS.indexOf(settings.color); settings.color = COLORS[(i + (d < 0 ? 2 : 1)) % 3]; saveSettings(); }, car: true },
       { label: 'NASIL OYNANIR', act: () => { app.screen = 'help'; } },
@@ -383,6 +392,14 @@
   function update(dt) {
     app.radioShow = Math.max(0, app.radioShow - dt);
     AU.siren(sirenLevel());
+    // yağmur sesi (tünelde kesilir) ve sisli havada arada bir vapur düdüğü
+    const G0 = app.screen === 'race' ? app.G : null;
+    const inTunnel = G0 && BY.segAt(G0, G0.pos + BY.PLAYER_Z).sea === 'T';
+    AU.rain(G0 && G0.weather === 'yagmur' ? (inTunnel ? 0.15 : 1) : 0);
+    if (G0 && G0.weather === 'sis' && G0.phase !== 'count') {
+      app.hornT -= dt;
+      if (app.hornT <= 0) { AU.sfx('duduk'); app.hornT = 13 + Math.random() * 10; }
+    }
     if (app.screen === 'title' || app.screen === 'help' || app.screen === 'scores') {
       if (!app.demo) newDemo();
       app.demoT += dt;
@@ -596,17 +613,18 @@
     screenDim(0.55);
     panel(14, 8, W - 28, H - 16, 12, 'rgba(18,16,42,0.86)');
     text('NASIL OYNANIR', W / 2, 15, '#f4c531', 10, 'center');
-    const story = ['Süre bitmeden sür! Her kontrol noktası süre ekler.', 'BOĞAZ YOLU: yol ayrımında sol RUMELİ, sağ ANADOLU ya da KÖPRÜ, 4 son.', 'İSTANBUL TURU: Cankurtaran\'dan köprüyle Asya\'ya, tünelle geri, 7 etap.'];
-    story.forEach((s, i) => text(s, W / 2, 30 + i * 10.5, '#fff8ec', 6.2, 'center', null, 500));
+    const story = ['Süre bitmeden sür! Her kontrol noktası süre ekler.', 'BOĞAZ YOLU: yol ayrımında sol RUMELİ, sağ ANADOLU ya da KÖPRÜ, 4 son.', 'İSTANBUL TURU: Cankurtaran\'dan köprüyle Asya\'ya, tünelle geri, 7 etap.',
+      'HAVA: siste görüş kısalır, yağmurda yol kayar, gece farlarla sürersin.'];
+    story.forEach((s, i) => text(s, W / 2, 28 + i * 10, '#fff8ec', 6.2, 'center', null, 500));
     const keys = [['← →', 'direksiyon'], ['↑ / Z', 'gaz'], ['↓ / X', 'fren'], ['R', 'radyo kanalı'], ['P', 'duraklat'], ['M', 'ses']];
     keys.forEach(([k, s], i) => {
-      const cx = i < 3 ? 70 : 230, y = 68 + (i % 3) * 15;
+      const cx = i < 3 ? 70 : 230, y = 72 + (i % 3) * 14.5;
       ART.rr(ctx, cx - 40, y - 2, 40, 12, 4); ctx.fillStyle = 'rgba(154,244,228,0.14)'; ctx.fill();
       text(k, cx - 20, y, '#9af4e4', 6.6, 'center', null);
       text(s, cx + 6, y, '#fff8ec', 6.6, 'left', null, 500);
     });
     const tips = ['Trafiğe hızla arkadan çarpma: kaza yaparsın.', 'Yol kenarındaki ağaç, direk ve binalara dikkat et.', 'Sert virajlarda hız kes, yoksa dışa savrulursun.'];
-    tips.forEach((s, i) => text(s, W / 2, 122 + i * 12, '#d8dcec', 6.4, 'center', null, 500));
+    tips.forEach((s, i) => text(s, W / 2, 123 + i * 11, '#d8dcec', 6.4, 'center', null, 500));
     const A = ART;
     const sample = [[A.car('taksi', 0, 40 * S), 40], [A.car('polis', Math.floor(app.t * 5) % 2, 40 * S), 40], [A.car('otobus', 0, 48 * S), 48], [A.car('motor', 0, 16 * S), 16], [A.car('bisiklet', 1, 14 * S), 14], [A.car('scooter', 2, 13 * S), 13]];
     let x = W / 2 - 112;

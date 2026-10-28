@@ -4,6 +4,10 @@
 (function (root) {
   'use strict';
   const K = '#1c1626';
+  // Gece çizimi: NIGHT doluyken pencerelerin bir kısmı ışıklı (LIT) çizilir; sonra nightPass ışıkların dışını karartır.
+  let NIGHT = null;
+  const LIT = '#ffd37d';
+  const nl = (fill, p) => (NIGHT && NIGHT() < (p || 0.5) ? LIT : fill);
   let S = 3;                       // cihaz pikseli / mantıksal piksel (main.js ayarlar)
   let LW = 1.5;                    // dış çizgi kalınlığı (tasarım birimi)
 
@@ -381,7 +385,7 @@
         const x = 12 + fx * 28;
         if (v % 2 && fy > 0 && fy < 5 && (fx === 1 || fx === 2)) continue;
         box(g, x - 1.5, y - 1.5, 21, 19, 1, '#f4f0e6', K, 1.2);
-        box(g, x + 1, y + 1, 16, 14, 0.6, r() < 0.18 ? '#f6e2a2' : lgrad(g, 0, y, 0, y + 15, [[0, '#7a96bc'], [1, '#3e4e6c']]), null);
+        box(g, x + 1, y + 1, 16, 14, 0.6, r() < 0.18 ? '#f6e2a2' : nl(lgrad(g, 0, y, 0, y + 15, [[0, '#7a96bc'], [1, '#3e4e6c']])), null);
         line(g, x + 9, y + 1, x + 9, y + 15, '#f4f0e6', 1.2);
         if (r() < 0.35) { box(g, x - 3, y + 15, 24, 3.2, 1, shade(col, -0.25), K, 1); for (let k = x - 1; k < x + 20; k += 3) line(g, k, y + 12, k, y + 15, K, 0.7); line(g, x - 2, y + 12, x + 20, y + 12, K, 0.9); }
       }
@@ -945,7 +949,7 @@
   // Çeşitli (v) ve yazılı (label) çizimler: VAR[k] = [g, y, çeşit sayısı, çiz(g, v)], LBL[k] = (yazı) → [g, y, çiz]
   const VAR = {}, LBL = {};
   const glass = (g, y0, y1, c0, c1) => lgrad(g, 0, y0, 0, y1, [[0, c0], [1, c1]]);
-  const winC = (g, y) => lgrad(g, 0, y, 0, y + 14, [[0, '#7a96bc'], [1, '#3e4e6c']]);
+  const winC = (g, y) => nl(lgrad(g, 0, y, 0, y + 14, [[0, '#7a96bc'], [1, '#3e4e6c']]));
   // Ahşap Osmanlı evi: cumbalı, pastel boyalı (Üsküdar, Ortaköy, Sultanahmet)
   const WOOD = ['#e8a4a0', '#f2d27a', '#9ccbe0', '#a8d4a0', '#e6b07a', '#c8a8d8'];
   VAR.ahsap_ev = [120, 156, WOOD.length, (g, v) => {
@@ -1041,7 +1045,7 @@
       const y = 22 + f * 16.6;
       for (let k = 0; k < 4; k++) {
         const x = 14 + k * 33;
-        box(g, x, y, 24, 10, 0.8, glass(g, y, y + 10, '#8ab0d4', '#4a6488'), null);
+        box(g, x, y, 24, 10, 0.8, nl(glass(g, y, y + 10, '#8ab0d4', '#4a6488'), 0.4), null);
         if (k === 1 || k === 2) box(g, x - 3, y + 9, 30, 4, 1, k === 1 ? ac : shade(ac, 0.3), K, 0.8);
       }
     }
@@ -1058,6 +1062,7 @@
     for (let y = 20; y < 270; y += 9) { g.beginPath(); g.moveTo(8, y); g.lineTo(76, y + 4); g.stroke(); }
     for (let x = 16; x < 76; x += 10) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 270); g.stroke(); }
     poly(g, [8, 14, 30, 20, 30, 270, 8, 270], 'rgba(255,255,255,0.18)', null);
+    if (NIGHT) for (let y = 24; y < 266; y += 9) for (let x = 9; x < 75; x += 10) if (NIGHT() < 0.3) rect(g, x, y + (x - 8) * 0.06, 8, 6, LIT);
     g.restore(); poly(g, [8, 270, 76, 270, 76, 30, 8, 14], null);
     line(g, 60, 26, 60, 4, '#8a909c', 1.6); circ(g, 60, 4, 1.8, '#ff4a3a', null);
   }];
@@ -1069,6 +1074,7 @@
     g.save(); rr(g, 6, 30, 98, 210, 2); g.clip();
     for (let x = 14; x < 104; x += 12) rect(g, x, 30, 3, 210, 'rgba(230,236,244,0.55)');
     for (let y = 40; y < 240; y += 12) rect(g, 6, y, 98, 1.2, 'rgba(20,30,50,0.4)');
+    if (NIGHT) for (let y = 30; y < 238; y += 12) for (let x = 6; x < 102; x += 12) if (NIGHT() < 0.25) rect(g, x + 3.2, y + 1.4, 8.6, 10.4, LIT);
     g.restore(); box(g, 6, 30, 98, 210, 2, null);
     box(g, 16, 12, 78, 20, 2, '#e8ecf2');
     let px = 12; while (textW(PLAZA_T[v], px) > 68 && px > 7) px -= 0.5;
@@ -1287,6 +1293,8 @@
     { sky: ['#3aa2ee', '#b8e2ff'], sea: '#2a7cc0', seaDark: '#226aa6', haze: '#c8e4f8', shore: '#6e8eac', shore2: '#8eaac4', sun: { y: 18, r: 9, c: '#ffffff' }, grass: ['#62a63a', '#579834'], park: ['#55a03c', '#4a9034'], forest: ['#3a7630', '#326c2a'], pave: ['#bcb8b0', '#b0aca4'], lights: 0 },
     { sky: ['#6c96d8', '#ffd8a0'], sea: '#3a72a8', seaDark: '#30628f', haze: '#f0d8b0', shore: '#6c7896', shore2: '#8a90a8', sun: { y: 56, r: 12, c: '#fff0b0' }, grass: ['#7a9a3a', '#6c8c34'], park: ['#6a9a3c', '#5e8c36'], forest: ['#4a6a30', '#40602a'], pave: ['#c4b8a4', '#b8ac98'], lights: 0.15 },
     { sky: ['#2c2458', '#ff9058'], sea: '#4a4a86', seaDark: '#3a3a70', haze: '#e8907a', shore: '#3a2c50', shore2: '#4e3a62', sun: { y: 92, r: 18, c: '#ffb050' }, grass: ['#5a6a3a', '#4e5e34'], park: ['#4e6a3a', '#445e34'], forest: ['#34502e', '#2c4628'], pave: ['#9a8a8a', '#8e7e80'], lights: 0.7 },
+    // 4: gece (ay, ışıklı kıyılar)
+    { sky: ['#070a22', '#1e2650'], sea: '#141c3a', seaDark: '#0e1530', haze: '#141a36', shore: '#121630', shore2: '#1c2244', sun: { y: 26, r: 7, c: '#f4f2e0' }, grass: ['#1a2c1e', '#16281a'], park: ['#18301e', '#152a1a'], forest: ['#12261a', '#102216'], pave: ['#34343e', '#2e2e38'], lights: 1 },
   ];
 
   // ---------------- önbellek ----------------
@@ -1306,6 +1314,42 @@
     return c;
   }
   // needPx: nesnenin ekrandaki genişliği (cihaz pikseli). Tasarım boyutunun 2^L katı ≥ needPx.
+  // Gece: ışıklı renkler (pencere, lamba, stop lambası, çakar) olduğu gibi kalır, gerisi koyu maviye çekilir.
+  // 'flood': camiler, kuleler, saray gibi ışıklandırılan yapılar altın rengi ışık alır.
+  const KEEP_LIT = ['#ffd37d', '#f6e2a2', '#fff2b0', '#fff6c8', '#ffe9a0', '#ffd27a', '#fff1c0', '#c81818', '#ff3a2a', '#b81818', '#ff6a50', '#ff5a4a',
+    '#ff7a5a', '#ffe0b0', '#ff4a3a', '#4a8aff', '#ffd060', '#f4a020', '#ffb030', '#7cff6a', '#ff4a3a'].map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  const FLOOD = { cami: 1, ayasofya: 1, sultanahmet: 1, camlica_camii: 1, camlica_kulesi: 1, galata_kulesi: 1, kiz_kulesi: 1, saray: 1, hisar: 1, kale: 1, kuleli: 1,
+    saat_kulesi: 1, misir_carsisi: 1, kopru_kule: 1, iskele: 1, tunel_agzi: 1, basla: 1, kontrol: 1, bitis: 1, tabela: 1, levha: 1, ayrim: 1, reklam: 1, tunel_levha: 1 };
+  // ışıklı renkler: tam eşleşme (dolgu içleri tam bu renkte çizilir), 32 bit tek arama
+  const LIT_SET = new Set(KEEP_LIT.map(([r, g, b]) => (r << 16) | (g << 8) | b));
+  function nightPass(c, mode) {
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const im = g.getImageData(0, 0, c.width, c.height);
+    const d = new Uint32Array(im.data.buffer);
+    // katsayılar: [r çarpanı, r eki, g çarpanı, g eki, b çarpanı, b eki]
+    const k = mode === 'sign' ? [0.72, 4, 0.72, 6, 0.78, 14] : mode === 'flood' ? [0.8, 18, 0.66, 12, 0.42, 14] : [0.27, 6, 0.3, 10, 0.42, 26];
+    for (let i = 0; i < d.length; i++) {
+      const v = d[i];
+      if (!(v >>> 24)) continue;
+      const r = v & 255, gg = (v >>> 8) & 255, b = (v >>> 16) & 255;
+      if (LIT_SET.has((r << 16) | (gg << 8) | b)) continue;
+      d[i] = (v & 0xff000000) | (((b * k[4] + k[5]) & 255) << 16) | (((gg * k[2] + k[3]) & 255) << 8) | ((r * k[0] + k[1]) & 255);
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  const SIGN = { tabela: 1, levha: 1, ayrim: 1, basla: 1, kontrol: 1, bitis: 1, reklam: 1, tunel_levha: 1, iskele: 0 };
+  function hashStr(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function getLodNight(key, w, h, scale, fn, mode) {
+    let c = lod.get(key);
+    if (c) { lod.delete(key); lod.set(key, c); return c; }
+    const old = NIGHT; NIGHT = rng(hashStr(key));
+    try { c = mk(w, h, fn, scale); } finally { NIGHT = old; }
+    nightPass(c, mode);
+    lod.set(key, c); lodPx += c.width * c.height;
+    while (lodPx > LOD_BUDGET && lod.size > 1) { const k0 = lod.keys().next().value; const c0 = lod.get(k0); lodPx -= c0.width * c0.height; lod.delete(k0); }
+    return c;
+  }
   function lodLevel(w, h, needPx) {
     let L = Math.ceil(Math.log2(Math.max(needPx / w, 1 / 32)));
     L = Math.max(-5, Math.min(3, L));
@@ -1324,7 +1368,7 @@
     return ['o:?', [8, 8, (g) => rect(g, 0, 0, 8, 8, '#f0f')]];
   }
   const defCache = new Map();
-  function sprite(k, sp, needPx) {
+  function sprite(k, sp, needPx, night) {
     const dk = k === 'tabela' ? 'tabela:' + sp.label : k === 'ayrim' ? 'ayrim:' + sp.label.join('|') : k === 'apartman' ? 'apt:' + ((sp.v || 0) % 7)
       : k === 'levha' ? 'levha:' + sp.label.join('|') : k === 'tunel_levha' ? 'tl:' + (sp.v || 0)
       : VAR[k] ? 'v:' + k + ':' + ((sp.v || 0) % VAR[k][2]) : LBL[k] ? 'l:' + k + ':' + sp.label : 'o:' + k;
@@ -1332,6 +1376,7 @@
     if (!d) { d = defOf(k, sp)[1]; defCache.set(dk, d); }
     const [w, h, fn] = d;
     const L = lodLevel(w, h, needPx === undefined ? w * S : needPx);
+    if (night) return getLodNight(dk + '@' + L + 'n', w, h, Math.pow(2, L), fn, SIGN[k] ? 'sign' : FLOOD[k] ? 'flood' : 'dark');
     return getLod(dk + '@' + L, w, h, Math.pow(2, L), fn);
   }
   const CAR_DEF = {
@@ -1361,18 +1406,29 @@
       }
     });
   }
-  function car(kind, color, needPx) {
+  function car(kind, color, needPx, night) {
     const [w, h] = CAR_DEF[kind] || [72, 44];
     const L = lodLevel(w, h, needPx === undefined ? w * S : needPx);
-    const key = 'c:' + kind + ':' + (CAR_DEF[kind] && !PER_COLOR[kind] ? '' : color) + '@' + L;
+    const key = 'c:' + kind + ':' + (CAR_DEF[kind] && !PER_COLOR[kind] ? '' : color) + '@' + L + (night ? 'n' : '');
     let c = lod.get(key);
     if (c) { lod.delete(key); lod.set(key, c); return c; }
     c = carCanvas(kind, color, Math.pow(2, L));
+    if (night) nightPass(c, 'sign');
     lod.set(key, c); lodPx += c.width * c.height;
     while (lodPx > LOD_BUDGET && lod.size > 1) { const k0 = lod.keys().next().value; const c0 = lod.get(k0); lodPx -= c0.width * c0.height; lod.delete(k0); }
     return c;
   }
-  function player(turn, brake, color) { return getScaled(`p:${turn}:${brake ? 1 : 0}:${color}`, () => playerCar(turn, brake, color)); }
+  function player(turn, brake, color, night) {
+    return getScaled(`p:${turn}:${brake ? 1 : 0}:${color}${night ? ':n' : ''}`, () => { const c = playerCar(turn, brake, color); return night ? nightPass(c, 'sign') : c; });
+  }
+  // ışık parlaması (eklemeli çizim için), renk başına bir kez
+  function glow(col) {
+    return getScaled('glow:' + col, () => mk(32, 32, (g) => {
+      const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gr.addColorStop(0, col); gr.addColorStop(0.35, col.replace(/[\d.]+\)$/, (m) => String(parseFloat(m) * 0.45) + ')')); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+    }));
+  }
 
   // uzak kıyı panoraması (ufkun üstünde, 1024 birim, yatayda tekrarlar)
   function minaret(g, x, by, h, w, col) {
@@ -1435,14 +1491,15 @@
     });
   }
   // bulutlar
-  function clouds(time) {
-    return getScaled('cl:' + time, () => {
+  function clouds(time, style) {
+    return getScaled('cl:' + time + (style || ''), () => {
       const r = rng(time * 5 + 1);
-      const col = time === 3 ? 'rgba(255,176,150,0.7)' : time === 2 ? 'rgba(255,244,228,0.85)' : 'rgba(255,255,255,0.92)';
-      const sh = time === 3 ? 'rgba(170,90,110,0.45)' : time === 2 ? 'rgba(220,180,150,0.45)' : 'rgba(170,200,230,0.5)';
+      const rain = style === 'rain';
+      const col = rain ? 'rgba(112,118,130,0.95)' : time === 4 ? 'rgba(60,68,110,0.55)' : time === 3 ? 'rgba(255,176,150,0.7)' : time === 2 ? 'rgba(255,244,228,0.85)' : 'rgba(255,255,255,0.92)';
+      const sh = rain ? 'rgba(70,74,86,0.8)' : time === 4 ? 'rgba(20,24,50,0.5)' : time === 3 ? 'rgba(170,90,110,0.45)' : time === 2 ? 'rgba(220,180,150,0.45)' : 'rgba(170,200,230,0.5)';
       return mk(1024, 70, (g) => {
-        for (let k = 0; k < 9; k++) {
-          const x = 40 + r() * 944, y = 18 + r() * 38, w = 34 + r() * 56;
+        for (let k = 0; k < (rain ? 22 : 9); k++) {
+          const x = 40 + r() * 944, y = (rain ? 4 : 18) + r() * (rain ? 46 : 38), w = (rain ? 70 : 34) + r() * (rain ? 90 : 56);
           const puffs = [[x - w * 0.36, y, w * 0.2], [x - w * 0.12, y - w * 0.12, w * 0.26], [x + w * 0.16, y - w * 0.06, w * 0.22], [x + w * 0.38, y + w * 0.02, w * 0.16]];
           g.fillStyle = sh; g.beginPath(); for (const [px, py, pr] of puffs) { g.moveTo(px + pr, py + 2); g.arc(px, py + 2, pr, 0, Math.PI * 2); } g.rect(x - w * 0.36, y + 2, w * 0.74, w * 0.18); g.fill();
           g.fillStyle = col; g.beginPath(); for (const [px, py, pr] of puffs) { g.moveTo(px + pr, py); g.arc(px, py, pr, 0, Math.PI * 2); } g.rect(x - w * 0.36, y, w * 0.74, w * 0.18); g.fill();
@@ -1470,7 +1527,7 @@
 
   root.BY_ART = {
     K, mk, rr, box, circ, ell, poly, line, rect, lgrad, archWin, shade, mix, rng, label, textW, FONT,
-    TIMES, panorama, clouds, sprite, car, player, SIZE, CAR_SIZE, CAR_COLORS, setScale, clearAll, get S() { return S; },
+    TIMES, panorama, clouds, sprite, car, player, glow, SIZE, CAR_DEF, CAR_SIZE, CAR_COLORS, setScale, clearAll, get S() { return S; },
     set LW(v) { LW = v; }, get LW() { return LW; },
   };
 })(window);

@@ -44,7 +44,7 @@ window.sim = function (seed, choices, secs, course) {
 window.tur = function (n, p, frac, opts) {
   opts = opts || {};
   size(384, 216);
-  const G = BY.newRace({ seed: opts.seed || 7, course: 'tur' }); const b = BY_BOT([0, 0, 0, 0, 0, 0, 0]); G.bgX = 0;
+  const G = BY.newRace({ seed: opts.seed || 7, course: 'tur', weather: opts.weather }); const b = BY_BOT([0, 0, 0, 0, 0, 0, 0]); G.bgX = 0;
   for (let i = 0; i < 60 * 900 && G.cur < n - 1; i++) { BY.step(G, b(G), 1 / 60); }
   const st = BY.curStage(G), part = st.parts[p];
   const target = Math.floor(part.start + frac * (part.end - part.start));
@@ -61,7 +61,7 @@ window.tur = function (n, p, frac, opts) {
     }
   }
   for (let i = 0; i < (opts.steps || 0); i++) { const inp = b(G); BY.step(G, inp, 1 / 60); if (opts.carsOff) G.cars = []; }
-  BY_RENDER.render(ctx, G, {});
+  for (let i = 0; i < (opts.frames || 1); i++) { BY_RENDER.render(ctx, G, {}); G.t += 1 / 60; }
   return { stage: BY_TRACK.STAGES[G.route[G.cur]].name, part: part.sea + '/' + part.land, kmh: BY.kmh(G), phase: G.phase, cars: G.cars.length };
 };
 window.ending = function (k) { size(384, 216); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(BY_ENDINGS.scene(k, '#d8302a'), 0, 0); };
@@ -114,7 +114,7 @@ window.bog = function (idx, frac, opts) {
   opts = opts || {};
   size(384, 216);
   const PATH = { 0: [], 1: [0], 2: [1], 3: [0, 0], 4: [0, 1], 5: [1, 1], 6: [0, 0, 0], 7: [0, 0, 1], 8: [1, 1, 0], 9: [1, 1, 1] };
-  const G = BY.newRace({ seed: opts.seed || 7 }); const b = BY_BOT(PATH[idx].concat([0, 0, 0])); G.bgX = 0;
+  const G = BY.newRace({ seed: opts.seed || 7, weather: opts.weather }); const b = BY_BOT(PATH[idx].concat([0, 0, 0])); G.bgX = 0;
   for (let i = 0; i < 60 * 600 && G.route[G.cur] !== idx; i++) BY.step(G, b(G), 1 / 60);
   const st = BY.curStage(G);
   const target = Math.floor(st.start + frac * (st.bodyEnd - st.start));
@@ -126,7 +126,8 @@ window.bog = function (idx, frac, opts) {
   }
   // cars: [[tür, ileride kaç şerit, x], ...]
   for (const [kind, ahead, x, color] of opts.cars || []) { const D = BY.CARS[kind]; G.cars.push({ kind, z: (target + ahead) * BY.SEG, x, tx: x, speed: BY.MAX * 0.3, w: D.w, len: D.len, laneT: 99, color: color || 0, edge: !!D.edge, police: !!D.police }); }
-  BY_RENDER.render(ctx, G, {});
+  if (opts.splash) G.splashT = 0.4;
+  for (let i = 0; i < (opts.frames || 1); i++) { BY_RENDER.render(ctx, G, { brake: opts.brake }); G.t += 1 / 60; }
   return BY_TRACK.STAGES[G.route[G.cur]].name;
 };
 </script>

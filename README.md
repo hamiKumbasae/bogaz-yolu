@@ -61,12 +61,25 @@ reklam panoları, ufukta gökdelenler.
 
 Rekorlar her mod için ayrı tutulur.
 
+## Hava
+
+Menüdeki **HAVA** seçeneğiyle iki modu da farklı havalarda sürebilirsin:
+
+- **Sis:** görüş kısalır, binalar ve araçlar sisin içinden çıkar; arada bir vapur düdüğü duyulur.
+- **Yağmur:** yol ıslak; virajlarda daha çok savrulur, fren geç tutar. Su birikintilerine girince araba
+  yana kayar ve su sıçrar. Arka camda silecek çalışır. Kontrol noktaları biraz daha fazla süre verir.
+- **Gece:** pencereler, sokak lambaları ve stop lambaları yanar; camiler ve kuleler ışıklandırılır,
+  1. Köprü'nün halatları renk renk parlar. Farlar yolu aydınlatır.
+- **Rastgele:** her yarışta havayı oyun seçer.
+
 ## Kurallar
 
 - Süre bitmeden bir sonraki etabın **kontrol noktasına** ulaş; her kontrol noktası süre ekler.
   Süre bittiğinde araba kayarak kontrol noktasına yetişirse yarış sürer.
-- Yolda dolmuş, taksi, otobüs, kamyon ve kurye motoru var. Hızla arkadan çarparsan kaza yaparsın;
-  yandan sıyırırsan yalnızca yavaşlarsın.
+- Yolda dolmuş, taksi, otobüs, kamyon, kurye ve motosikletler, çakarlı polis arabaları ve polis
+  motosikletleri var; polis yaklaşınca siren duyulur. Sahil yolunda sağ kenarda bisikletliler ve
+  elektrikli scooter'lar gider (otoyolda, köprüde ve tünelde olmazlar). Hızla arkadan çarparsan kaza
+  yaparsın; yandan sıyırırsan yalnızca yavaşlarsın.
 - Yoldan çıkarsan yavaşlarsın; yol kenarındaki ağaç, direk ve binalara çarpmak kazadır.
   Deniz tarafında korkuluk arabayı tutar.
 - Sert virajlarda hız kesmezsen araba dışa doğru savrulur.
