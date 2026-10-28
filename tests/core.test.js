@@ -197,6 +197,27 @@ function commonStageChecks(st, S) {
   ok(G.result === 'over', 'süre bitince oyun biter');
 }
 
+// ---------- trafik: yeni araçlar ----------
+{
+  ok(['polis', 'polis_motor', 'motosiklet', 'bisiklet', 'scooter'].every((k) => BY.CARS[k]), 'polis, motosiklet, bisiklet, scooter tanımlı');
+  // birçok yarışta trafiği üret: bisiklet ve scooter hep sağ kenarda, otoyolda, köprüde ve tünelde yok
+  const seen = new Set(); let edgeBad = 0, edgeOnHwy = 0;
+  for (const course of ['bogaz', 'tur']) for (let seed = 1; seed <= 6; seed++) {
+    const G = BY.newRace({ seed: seed * 13, course }); run(G, NONE, 3.5);
+    run(G, (g) => {
+      for (const c of g.cars) {
+        seen.add(c.kind);
+        if (c.edge && Math.abs(c.x - BY.EDGE_X) > 1e-9) edgeBad++;
+        if (c.edge && ['N', 'B', 'T'].includes(BY.segAt(g, c.z).sea)) edgeOnHwy++;
+      }
+      return bot([0, 1, 0])(g);
+    }, 240, (g) => g.result);
+  }
+  ok(['polis', 'polis_motor', 'motosiklet', 'bisiklet', 'scooter'].every((k) => seen.has(k)), 'yeni araçların hepsi trafikte görüldü: ' + [...seen].join(','));
+  ok(edgeBad === 0, 'bisiklet ve scooter şerit değiştirmez');
+  ok(edgeOnHwy === 0, 'bisiklet ve scooter otoyolda, köprüde, tünelde yok (' + edgeOnHwy + ')');
+}
+
 // ---------- bot: bütün rotalar süresinde bitiyor mu ----------
 {
   const results = [];

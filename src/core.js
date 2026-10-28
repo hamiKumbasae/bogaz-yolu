@@ -36,8 +36,16 @@
     otobus: { w: 0.7, len: 3.2, v: [0.22, 0.34] },
     kamyon: { w: 0.7, len: 2.8, v: [0.2, 0.32] },
     motor: { w: 0.22, len: 1, v: [0.35, 0.55] },
+    motosiklet: { w: 0.22, len: 1, v: [0.38, 0.58] },
+    polis: { w: 0.44, len: 1.4, v: [0.5, 0.62], police: true },
+    polis_motor: { w: 0.22, len: 1, v: [0.5, 0.64], police: true },
+    // bisiklet ve scooter: yolun sağ kenarında, yavaş, şerit değiştirmez; otoyola, köprüye ve tünele girmez
+    bisiklet: { w: 0.16, len: 0.8, v: [0.08, 0.11], edge: true },
+    scooter: { w: 0.15, len: 0.6, v: [0.07, 0.09], edge: true },
   };
-  const CAR_KINDS = ['araba', 'araba', 'taksi', 'taksi', 'dolmus', 'otobus', 'kamyon', 'araba', 'motor'];
+  const CAR_KINDS = ['araba', 'araba', 'taksi', 'taksi', 'dolmus', 'otobus', 'kamyon', 'araba', 'motor', 'motosiklet', 'polis', 'bisiklet', 'scooter'];
+  const EDGE_X = 0.84;
+  const NO_EDGE = { N: 1, B: 1, T: 1 };
   const LANE_X = [-2 / 3, 0, 2 / 3];
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -119,9 +127,16 @@
 
   // ---------------- trafik ----------------
   function crowded(G, z) { for (const c of G.cars) if (Math.abs(c.z - z) < SEG * 10) return true; return false; }
+  // bisiklet ya da scooter önündeki ~20 saniyelik yolda otoyola, köprüye ya da tünele girecek mi
+  function noEdgeAhead(G, z) {
+    for (let k = 0; k <= 130; k += 5) if (NO_EDGE[segAt(G, z + k * SEG).sea]) return true;
+    return false;
+  }
   function spawnCar(G, z, avoidPlayer) {
     if (crowded(G, z)) return null;
-    const kind = CAR_KINDS[Math.floor(G.rand() * CAR_KINDS.length)];
+    let kind = CAR_KINDS[Math.floor(G.rand() * CAR_KINDS.length)];
+    if (kind === 'polis' && G.rand() < 0.3) kind = 'polis_motor';
+    if (CARS[kind].edge && noEdgeAhead(G, z)) kind = 'araba';
     const D = CARS[kind];
     let lane = Math.floor(G.rand() * 3);
     if (avoidPlayer) {
@@ -129,7 +144,8 @@
       const pn = (G.px - s.cx) / RW;
       if (Math.abs(LANE_X[lane] - pn) < 0.4) lane = (lane + 1 + Math.floor(G.rand() * 2)) % 3;
     }
-    const c = { kind, z, x: LANE_X[lane], tx: LANE_X[lane], speed: MAX * (D.v[0] + G.rand() * (D.v[1] - D.v[0])), w: D.w, len: D.len, laneT: 3 + G.rand() * 6, color: Math.floor(G.rand() * 5) };
+    const x = D.edge ? EDGE_X : LANE_X[lane];
+    const c = { kind, z, x, tx: x, speed: MAX * (D.v[0] + G.rand() * (D.v[1] - D.v[0])), w: D.w, len: D.len, laneT: 3 + G.rand() * 6, color: Math.floor(G.rand() * 5), edge: !!D.edge, police: !!D.police };
     G.cars.push(c);
     return c;
   }
@@ -145,6 +161,8 @@
   function updateTraffic(G, dt) {
     const pz = G.pos + PLAYER_Z;
     for (const c of G.cars) {
+      // bisiklet ve scooter kenarda düz gider
+      if (c.edge) { c.z += c.speed * dt; if (NO_EDGE[segAt(G, c.z).sea]) c.gone = true; continue; }
       // önündeki yavaş araca takılma ve şerit değiştirme
       c.laneT -= dt;
       let blocked = null;
@@ -168,7 +186,7 @@
     }
     // görüş dışında kalanları yeniden ileri koy
     const want = trafficTarget(G);
-    G.cars = G.cars.filter((c) => c.z > G.pos - SEG * 3 && inBody(G, c.z));
+    G.cars = G.cars.filter((c) => !c.gone && c.z > G.pos - SEG * 3 && inBody(G, c.z));
     let tries = 0;
     while (G.cars.length < want && tries++ < 6) {
       const z = pz + SEG * (230 + G.rand() * 60);
@@ -376,7 +394,7 @@
   function kmh(G) { return Math.round(G.speed * KMH); }
 
   root.BY = {
-    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, LANE_X, HIT, START_TIME, EXTEND, TIMING,
+    SEG, RW, CAM_H, CAM_DEPTH, PLAYER_Z, MAX, P, CARS, CAR_KINDS, LANE_X, EDGE_X, HIT, START_TIME, EXTEND, TIMING,
     newRace, step, segAt, roadsAt, nearestRoad, limits, kmh, curStage,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

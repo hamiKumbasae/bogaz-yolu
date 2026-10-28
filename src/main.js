@@ -371,8 +371,18 @@
     const s = BY.segAt(G, G.pos + BY.PLAYER_Z);
     G.bgX = (G.bgX || 0) + s.curve * (G.speed / BY.MAX) * dt * 36;
   }
+  // en yakın polis aracının sireni (yalnız yarışta)
+  function sirenLevel() {
+    const G = app.G;
+    if (app.screen !== 'race' || !G || G.phase === 'count') return 0;
+    const pz = G.pos + BY.PLAYER_Z;
+    let best = 0;
+    for (const c of G.cars) if (c.police) best = Math.max(best, 1 - Math.abs(c.z - pz) / (BY.SEG * 140));
+    return best;
+  }
   function update(dt) {
     app.radioShow = Math.max(0, app.radioShow - dt);
+    AU.siren(sirenLevel());
     if (app.screen === 'title' || app.screen === 'help' || app.screen === 'scores') {
       if (!app.demo) newDemo();
       app.demoT += dt;
@@ -598,8 +608,8 @@
     const tips = ['Trafiğe hızla arkadan çarpma: kaza yaparsın.', 'Yol kenarındaki ağaç, direk ve binalara dikkat et.', 'Sert virajlarda hız kes, yoksa dışa savrulursun.'];
     tips.forEach((s, i) => text(s, W / 2, 122 + i * 12, '#d8dcec', 6.4, 'center', null, 500));
     const A = ART;
-    const sample = [[A.car('taksi', 0, 40 * S), 40], [A.car('dolmus', 0, 40 * S), 40], [A.car('otobus', 0, 48 * S), 48], [A.car('motor', 0, 16 * S), 16]];
-    let x = W / 2 - 80;
+    const sample = [[A.car('taksi', 0, 40 * S), 40], [A.car('polis', Math.floor(app.t * 5) % 2, 40 * S), 40], [A.car('otobus', 0, 48 * S), 48], [A.car('motor', 0, 16 * S), 16], [A.car('bisiklet', 1, 14 * S), 14], [A.car('scooter', 2, 13 * S), 13]];
+    let x = W / 2 - 112;
     for (const [img, w] of sample) { const h = w * img.lh / img.lw; ctx.drawImage(img, x, 192 - h, w, h); x += w + 12; }
     if (Math.floor(app.t * 2) % 2) text('DEVAM İÇİN Z', W / 2, H - 22, '#f4c531', 6.6, 'center');
     app.menuItems = [];

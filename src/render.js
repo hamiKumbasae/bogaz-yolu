@@ -349,7 +349,9 @@
           if (w < 0.4) continue;
           const cx = X + c.x * (p.W1 + (p.W2 - p.W1) * t);
           if (Y < clip && w > 2) ART.ell(ctx, cx, Y - w * 0.02, w * 0.55, Math.max(0.5, w * 0.06), 'rgba(0,0,0,0.3)', null);
-          drawSprite(ctx, ART.car(c.kind, c.color, w * S), cx, Y, w, clip, false);
+          // polis araçlarının çakarı yanıp söner (her aracın kendi ritmi)
+          const col = c.police ? Math.floor(G.t * 5 + c.z / SEG * 0.37) % 2 : c.color;
+          drawSprite(ctx, ART.car(c.kind, col, w * S), cx, Y, w, clip, false);
         }
       }
     }

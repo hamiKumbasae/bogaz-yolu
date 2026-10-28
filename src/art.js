@@ -192,6 +192,92 @@
       box(g, 42, 71.5, 24, 7, 1.2, '#f6f6f2', K, 1);
     });
   }
+  // polis arabası: beyaz, mavi şerit, tavanda çakar. ph: hangi lamba yanıyor (0 kırmızı, 1 mavi)
+  function polis(ph) {
+    return mk(72, 52, (g) => {
+      LW = 1.5;
+      const body = '#f4f6fa', dark = '#a8b0bc', light = '#ffffff';
+      for (const x of [4, 54]) box(g, x, 37, 14, 13, 3, '#26222c');
+      box(g, 2, 29, 68, 15, 5, dark);
+      box(g, 25, 33, 22, 8, 1.4, '#f6f6f2', K, 1); rect(g, 25.6, 33.6, 3, 6.8, '#2a5ad8');
+      box(g, 3, 20, 66, 12, 5, lgrad(g, 0, 20, 0, 32, [[0, light], [0.4, body], [1, '#dde2ea']]));
+      rect(g, 3.6, 26, 64.8, 4, '#1e4aa8');
+      label(g, 'POLİS', 36, 28.2, 4.4, '#ffffff');
+      for (const x of [5.5, 52]) box(g, x, 22, 14.5, 4.4, 2.2, '#c81818', K, 1);
+      poly(g, [12, 21, 60, 21, 54, 12.4, 18, 12.4], body);
+      poly(g, [15, 20, 57, 20, 52, 14.2, 20, 14.2], lgrad(g, 0, 14, 0, 20, [[0, '#5a7aa6'], [1, '#2a3a58']]), K, 1);
+      // çakar
+      box(g, 20, 6, 32, 7, 2, '#3a3e48');
+      const red = ph === 0, blue = ph === 1;
+      box(g, 21.5, 7.2, 13.5, 4.6, 1.6, red ? '#ff4a3a' : '#7a2020', null);
+      box(g, 37, 7.2, 13.5, 4.6, 1.6, blue ? '#4a8aff' : '#1e2e6a', null);
+      if (red) rect(g, 23, 7.8, 5, 1.4, 'rgba(255,255,255,0.8)');
+      if (blue) rect(g, 39, 7.8, 5, 1.4, 'rgba(255,255,255,0.8)');
+      g.save(); g.globalCompositeOperation = 'lighter';
+      const cx = red ? 28 : 44, gr = g.createRadialGradient(cx, 9.5, 1, cx, 9.5, 16);
+      gr.addColorStop(0, red ? 'rgba(255,80,60,0.75)' : 'rgba(80,140,255,0.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(cx - 16, 0, 32, 26);
+      g.restore();
+    });
+  }
+  // motosiklet ve polis motosikleti (arkadan, sürücüsüyle). col: mont rengi; ph: polis ise çakar
+  const JACKET = ['#2a2a34', '#c8302a', '#2a5ad8', '#e8a020', '#2a8a5a'];
+  function motosiklet(col, police, ph) {
+    return mk(34, 56, (g) => {
+      LW = 1.3;
+      box(g, 14, 42, 6, 14, 2.5, '#26222c');
+      box(g, 9, 34, 16, 12, 3, police ? '#f4f6fa' : '#3a3e48');
+      box(g, 12.5, 38.5, 9, 3, 1.2, '#ff5a4a', null);
+      if (police) { box(g, 4, 30, 26, 8, 2, '#f4f6fa'); rect(g, 4.5, 33, 25, 2.4, '#1e4aa8'); }
+      // sürücü
+      const jc = police ? '#1e2e5a' : JACKET[col % JACKET.length];
+      box(g, 8, 16, 18, 20, 5, jc);
+      if (police) rect(g, 8.5, 26, 17, 3, '#e8e04a');
+      box(g, 3, 20, 7, 4, 2, jc); box(g, 24, 20, 7, 4, 2, jc);
+      circ(g, 4, 23, 2.4, '#26222c'); circ(g, 30, 23, 2.4, '#26222c');
+      ell(g, 17, 10, 7, 7.4, police ? '#f4f6fa' : ['#f4f4f0', '#26222c', '#c8302a', '#2a2a34', '#e8a020'][col % 5]);
+      box(g, 11, 9, 12, 3, 1.2, '#3a4a64', null);
+      if (police) {
+        box(g, 11, 0, 12, 4, 1.4, '#3a3e48');
+        box(g, 11.8, 0.6, 5, 2.8, 1, ph === 0 ? '#ff4a3a' : '#7a2020', null);
+        box(g, 17.2, 0.6, 5, 2.8, 1, ph === 1 ? '#4a8aff' : '#1e2e6a', null);
+      }
+    });
+  }
+  // elektrikli kiralık scooter (markasız) ve ayakta sürücüsü
+  const SHIRT = ['#e8763a', '#2aa49a', '#6a4aa8', '#d84a6a', '#4a7ad8'];
+  function scooter(col) {
+    return mk(24, 60, (g) => {
+      LW = 1.2;
+      box(g, 9.5, 48, 5, 12, 2, '#26222c');
+      box(g, 6, 44, 12, 5, 2, '#2ab07a');
+      rect(g, 6.5, 45.4, 11, 1.6, '#e8f8ef');
+      line(g, 12, 44, 12, 22, '#5a6070', 1.8);
+      box(g, 2, 19, 20, 3, 1.4, '#3a3e48');
+      // sürücü (ayakta)
+      box(g, 7.5, 34, 4, 12, 1.6, '#3a4a64'); box(g, 12.5, 34, 4, 12, 1.6, '#3a4a64');
+      box(g, 6, 16, 12, 20, 4, SHIRT[col % SHIRT.length]);
+      box(g, 7, 17, 10, 9, 3, shade(SHIRT[col % SHIRT.length], -0.2), null);
+      circ(g, 12, 10, 5.4, '#4a3428');
+      box(g, 6.5, 3.4, 11, 5, 2.4, '#f4f4f0');
+    });
+  }
+  // bisikletli (arkadan): ince tekerlek, sırt çantası, kask
+  function bisiklet(col) {
+    return mk(26, 60, (g) => {
+      LW = 1.2;
+      ell(g, 13, 52, 2.6, 8, '#26222c'); ell(g, 13, 52, 1, 6, '#6a707c', null);
+      line(g, 13, 44, 13, 34, '#c8302a', 1.8);
+      box(g, 9, 31, 8, 3.4, 1.4, '#26222c');
+      box(g, 8, 40, 4, 10, 1.6, '#2a2a34'); box(g, 14, 38, 4, 10, 1.6, '#2a2a34');
+      box(g, 6, 14, 14, 20, 5, SHIRT[(col + 2) % SHIRT.length]);
+      box(g, 8, 18, 10, 12, 3, '#3a3e48');
+      line(g, 9, 19, 9, 29, '#5a5e68', 1); line(g, 17, 19, 17, 29, '#5a5e68', 1);
+      box(g, 0.5, 16, 6, 3.4, 1.6, SHIRT[(col + 2) % SHIRT.length]); box(g, 19.5, 16, 6, 3.4, 1.6, SHIRT[(col + 2) % SHIRT.length]);
+      circ(g, 13, 9, 5.4, '#f1b98f');
+      g.beginPath(); g.ellipse(13, 7.6, 6.6, 5, 0, Math.PI, 0); g.closePath(); F(g, ['#f4c531', '#2a8a5a', '#e8343a', '#2a5ad8', '#f4f4f0'][col % 5]);
+    });
+  }
   function metrobus() {
     return mk(120, 100, (g) => {
       LW = 1.7;
@@ -1250,7 +1336,10 @@
   }
   const CAR_DEF = {
     taksi: [72, 44, () => sedan(0, true)], dolmus: [84, 64, dolmus], otobus: [116, 96, otobus], kamyon: [108, 88, kamyon], motor: [32, 48, motor], metrobus: [120, 100, metrobus], tramvay: [110, 104, tramvay],
+    polis: [72, 52], polis_motor: [34, 56], motosiklet: [34, 56], scooter: [24, 60], bisiklet: [26, 60],
   };
+  // renk (ya da çakar karesi) önbellek anahtarına girenler
+  const PER_COLOR = { polis: 1, polis_motor: 1, motosiklet: 1, scooter: 1, bisiklet: 1 };
   // araç çizimleri kendi tuvalini kurar; istenen ölçekte kurulsun diye S geçici olarak değiştirilir
   function withScale(s, fn) { const old = S; S = s; try { return fn(); } finally { S = old; } }
   function carCanvas(kind, color, scale) {
@@ -1263,6 +1352,11 @@
         case 'motor': return motor();
         case 'metrobus': return metrobus();
         case 'tramvay': return tramvay();
+        case 'polis': return polis(color % 2);
+        case 'polis_motor': return motosiklet(0, true, color % 2);
+        case 'motosiklet': return motosiklet(color, false);
+        case 'scooter': return scooter(color);
+        case 'bisiklet': return bisiklet(color);
         default: return sedan(color, false);
       }
     });
@@ -1270,7 +1364,7 @@
   function car(kind, color, needPx) {
     const [w, h] = CAR_DEF[kind] || [72, 44];
     const L = lodLevel(w, h, needPx === undefined ? w * S : needPx);
-    const key = 'c:' + kind + ':' + (CAR_DEF[kind] ? '' : color) + '@' + L;
+    const key = 'c:' + kind + ':' + (CAR_DEF[kind] && !PER_COLOR[kind] ? '' : color) + '@' + L;
     let c = lod.get(key);
     if (c) { lod.delete(key); lod.set(key, c); return c; }
     c = carCanvas(kind, color, Math.pow(2, L));
@@ -1368,7 +1462,8 @@
     misir_carsisi: 6.5, kumpir: 0.9, saat_kulesi: 1.3, kruvaziyer: 10,
     kosk: 3.4, lale: 1.2, yelkenli: 1.1, kuleli: 7.2, balik_lokantasi: 2.8,
   };
-  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2, metrobus: 0.74, tramvay: 0.72 };
+  const CAR_SIZE = { araba: 0.42, taksi: 0.42, dolmus: 0.52, otobus: 0.72, kamyon: 0.72, motor: 0.2, metrobus: 0.74, tramvay: 0.72,
+    polis: 0.44, polis_motor: 0.22, motosiklet: 0.22, scooter: 0.15, bisiklet: 0.16 };
 
   function setScale(s) { if (Math.abs(s - S) < 1e-6) return; S = s; scaled.clear(); }
   function clearAll() { scaled.clear(); lod.clear(); lodPx = 0; defCache.clear(); }

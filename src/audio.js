@@ -96,6 +96,26 @@
   }
   function engineStop() { if (engine && ac) { engine.g.gain.setTargetAtTime(0, ac.currentTime, 0.05); engine.ng.gain.setTargetAtTime(0, ac.currentTime, 0.05); engine.sg.gain.setTargetAtTime(0, ac.currentTime, 0.05); } }
 
+  // ---------------- siren ----------------
+  // Yakındaki polis aracının sireni: kare dalga, frekansı yavaşça inip çıkar. level 0..1 (uzaklığa göre).
+  let siren = null;
+  function sirenSet(level) {
+    if (!ac) return;
+    const t = ac.currentTime;
+    if (!(level > 0.001)) { if (siren) siren.g.gain.setTargetAtTime(0, t, 0.12); return; }
+    if (!siren) {
+      const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = 960;
+      lfo.type = 'triangle'; lfo.frequency.value = 0.6; lg.gain.value = 340;
+      lfo.connect(lg).connect(o.frequency);
+      f.type = 'lowpass'; f.frequency.value = 2000;
+      g.gain.value = 0;
+      o.connect(f).connect(g).connect(sfxBus); o.start(); lfo.start();
+      siren = { g };
+    }
+    siren.g.gain.setTargetAtTime(muted ? 0 : level * level * 0.03, t, 0.15);
+  }
+
   // ---------------- efektler ----------------
   const last = {};
   function sfx(name) {
@@ -196,7 +216,7 @@
   }
 
   root.BY_AUDIO = {
-    unlock: ctx, sfx, engineStart, engineUpdate, engineStop, playRadio, stopRadio, STATIONS,
+    unlock: ctx, sfx, engineStart, engineUpdate, engineStop, playRadio, stopRadio, STATIONS, siren: sirenSet,
     get muted() { return muted; }, setMuted, current: () => (cur ? cur.i : null),
   };
 })(window);

@@ -85,8 +85,8 @@ window.tower = function () {
 <script>
 // semt çizimleri: her çeşidiyle
 window.semt = function () {
-  size(384, 520);
-  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 520);
+  size(384, 600);
+  ctx.fillStyle = '#7ab0d8'; ctx.fillRect(0, 0, 384, 600);
   const A = BY_ART; let x = 2, y = 2, rowH = 0;
   const put = (img, maxH) => { const s = Math.min(1, maxH / img.lh, 120 / img.lw); const w = img.lw * s, h = img.lh * s; if (x + w > 382) { x = 2; y += rowH + 4; rowH = 0; } ctx.drawImage(img, x, y, w, h); x += w + 4; rowH = Math.max(rowH, h); };
   const one = (k, sp, mh) => { const p = A.sprite(k, sp, 1); const s = Math.min(1, mh / p.lh, 120 / p.lw); put(A.sprite(k, sp, p.lw * s * S), mh); };
@@ -101,6 +101,11 @@ window.semt = function () {
   put(A.car('tramvay', 0, 110 * S * 0.6), 60);
   for (let v = 0; v < 3; v++) one('kosk', { v }, 50);
   one('lale', {}, 24); one('yelkenli', {}, 50); one('kuleli', {}, 60); one('balik_lokantasi', {}, 44);
+  put(A.car('polis', 0, 72 * S), 52); put(A.car('polis', 1, 72 * S), 52);
+  for (let v = 0; v < 2; v++) put(A.car('polis_motor', v, 34 * S), 56);
+  for (let v = 0; v < 3; v++) put(A.car('motosiklet', v, 34 * S), 56);
+  for (let v = 0; v < 3; v++) put(A.car('scooter', v, 24 * S), 60);
+  for (let v = 0; v < 3; v++) put(A.car('bisiklet', v, 26 * S), 60);
 };
 </script>
 <script>
@@ -119,6 +124,8 @@ window.bog = function (idx, frac, opts) {
     const kinds = ['araba', 'taksi', 'dolmus', 'otobus', 'araba', 'kamyon'];
     for (let k = 0; k < opts.traffic; k++) { const kind = kinds[(k * 3 + 1) % kinds.length], D = BY.CARS[kind], lx = BY.LANE_X[(k * 2 + 1) % 3]; G.cars.push({ kind, z: (target + 14 + k * 23) * BY.SEG, x: lx, tx: lx, speed: BY.MAX * 0.3, w: D.w, len: D.len, laneT: 99, color: k % 5 }); }
   }
+  // cars: [[tür, ileride kaç şerit, x], ...]
+  for (const [kind, ahead, x, color] of opts.cars || []) { const D = BY.CARS[kind]; G.cars.push({ kind, z: (target + ahead) * BY.SEG, x, tx: x, speed: BY.MAX * 0.3, w: D.w, len: D.len, laneT: 99, color: color || 0, edge: !!D.edge, police: !!D.police }); }
   BY_RENDER.render(ctx, G, {});
   return BY_TRACK.STAGES[G.route[G.cur]].name;
 };
