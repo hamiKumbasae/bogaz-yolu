@@ -247,6 +247,8 @@
     scores: { bogaz: store.get('by-rekorlar', []), tur: store.get('by-rekorlar-tur', []) }, scoreCourse: settings.course,
   };
   const SCORE_KEY = { bogaz: 'by-rekorlar', tur: 'by-rekorlar-tur' };
+  // çevrimiçi skor tablosu (src/skor.js); adresi boşsa kapalıdır ve hiçbir şey değişmez
+  const LB = window.OYUN_SKOR && window.OYUN_SKOR.enabled ? window.OYUN_SKOR : null;
   window.__by = { app, BY, start: (c) => startRace(c), render: () => render() };
 
   function newDemo() {
@@ -263,6 +265,7 @@
     app.hornT = 4 + Math.random() * 6;
     app.G.bgX = 0;
     app.screen = 'race'; app.lastStage = -1; app.banner = null;
+    if (LB) LB.runStart(course);
     AU.engineStart();
     AU.playRadio(settings.radio);
   }
@@ -274,7 +277,13 @@
     const G = app.G;
     app.scoreCourse = G.course;
     if (qualifies(G.score, G.course)) { app.screen = 'name'; app.name = ['A', 'A', 'A']; app.nameIdx = 0; }
-    else { app.screen = 'scores'; app.endT = 0; app.newEntry = null; }
+    else { app.screen = 'scores'; app.endT = 0; app.newEntry = null; online(); }
+  }
+  // yerel rekor ekranından sonra çevrimiçi tabloya ad sor (yerel adı öneri olarak)
+  function online(name) {
+    const G = app.G;
+    if (!LB || !G) return;
+    LB.runEnd({ score: G.score, meta: { finished: G.result === 'goal', stage: G.route[G.cur] || 0 }, name });
   }
   function saveName() {
     const G = app.G, c = G.course;
@@ -285,6 +294,7 @@
     app.scores[c] = L.slice(0, 5);
     store.set(SCORE_KEY[c], app.scores[c]);
     app.screen = 'scores'; app.endT = 0; app.newEntry = entry; app.scoreCourse = c;
+    online(entry.n);
   }
   const LETTERS = 'ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ'.split('');
 
@@ -305,6 +315,7 @@
     return items;
   }
   function menuKey(k) {
+    if (LB && LB.isOpen()) return;   // skor tablosu açıkken kumanda ve oyun kolu menüyü oynatmasın
     const s = app.screen;
     if (s === 'title') {
       const items = titleItems();
@@ -731,6 +742,7 @@
     open: null,
   };
 
+  if (LB) LB.init({ onOpen: () => pause() });
   newDemo();
   addEventListener('pointerdown', () => { if (app.screen === 'title' && AU.current() === null && settings.radio >= 0) AU.playRadio(settings.radio); });
   addEventListener('keydown', () => { if (app.screen === 'title' && AU.current() === null && settings.radio >= 0) AU.playRadio(settings.radio); });
