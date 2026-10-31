@@ -62,7 +62,8 @@ yanında T1 tramvayı akan yol; Karaköy'de taş binalar, kafeler ve kruvaziyer 
 kumpirciler; Üsküdar'da renkli ahşap evler ve çay bahçeleri; Şile Otoyolu ve E-5'te siteler, rezidanslar, plazalar ve
 reklam panoları, ufukta gökdelenler.
 
-Rekorlar her mod için ayrı tutulur.
+Rekorlar her mod için ayrı tutulur. Sunucu adresi ayarlanmışsa yarış bitince skor çevrimiçi tabloya da gönderilebilir
+(tüm zamanlar ve bu hafta, ilk 10). Sunucuya ulaşılamazsa oyun takılmaz.
 
 ## Hava
 
@@ -127,6 +128,9 @@ node tests/core.test.js     # pist, fizik, çarpışma, süre; bir botla Boğaz 
 - `src/audio.js`: motor sesi, efektler ve üç radyo kanalının özgün müzikleri.
 - `src/main.js`: ekranlar, HUD, giriş (klavye, dokunmatik, eğme, oyun kolu), rekorlar.
 - `src/remote.js`, `kumanda.html`: telefon direksiyonu.
+- `src/skor.js`: çevrimiçi skor tablosu. Yarış bitince (yerel REKORLAR ekranından sonra) ad sorar. Boğaz Yolu ve
+  İstanbul Turu'nun tabloları ayrıdır. En üstteki `SKOR_API` boşsa kapalıdır ve oyun eskisi gibi çalışır. Sunucu
+  `bug-avcisi` deposundaki `skor-api/` klasöründe (FastAPI + MariaDB, Raspberry Pi + Cloudflare Tunnel).
 - `tools/onizle.html`: geliştirirken sahneleri tek tek çizdirmek için.
 
 Her `main` gönderiminde GitHub Actions testleri çalıştırır ve siteyi GitHub Pages'e yayınlar.
